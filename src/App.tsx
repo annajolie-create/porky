@@ -1,22 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
-import Placeholder from '@tiptap/extension-placeholder'
-import TextAlign from '@tiptap/extension-text-align'
-import CharacterCount from '@tiptap/extension-character-count'
 import { Printer } from '@phosphor-icons/react/dist/csr/Printer'
-import { Toolbar } from './Toolbar'
-import {
-  DEFAULT_HTML,
-  DEFAULT_TITLE,
-  loadDoc,
-  saveDoc,
-} from './storage'
-
-function wordLabel(count: number) {
-  return count === 1 ? '1 word' : `${count.toLocaleString()} words`
-}
+import { StatusBar } from './components/StatusBar'
+import { buildExtensions } from './editor/extensions'
+import { Toolbar } from './toolbar/Toolbar'
+import { DEFAULT_HTML, DEFAULT_TITLE, loadDoc, saveDoc } from './storage'
 
 export default function App() {
   const saved = useMemo(() => loadDoc(), [])
@@ -25,19 +13,7 @@ export default function App() {
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      Underline,
-      Placeholder.configure({
-        placeholder: 'Type here. Enter starts a new paragraph.',
-      }),
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-      }),
-      CharacterCount,
-    ],
+    extensions: buildExtensions(),
     content: saved?.html ?? DEFAULT_HTML,
     editorProps: {
       attributes: {
@@ -47,18 +23,6 @@ export default function App() {
       },
     },
   })
-
-  const [, setSelection] = useState(0)
-  useEffect(() => {
-    if (!editor) return
-    const bump = () => setSelection((n) => n + 1)
-    editor.on('selectionUpdate', bump)
-    editor.on('transaction', bump)
-    return () => {
-      editor.off('selectionUpdate', bump)
-      editor.off('transaction', bump)
-    }
-  }, [editor])
 
   useEffect(() => {
     if (!editor) return
@@ -78,8 +42,6 @@ export default function App() {
       window.clearTimeout(timer)
     }
   }, [editor, title])
-
-  const words = editor?.storage.characterCount.words() ?? 0
 
   return (
     <div className="app">
@@ -102,11 +64,7 @@ export default function App() {
             <span className="save-pill" aria-live="polite">
               {saveState === 'saving' ? 'Saving' : 'Saved'}
             </span>
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={() => window.print()}
-            >
+            <button type="button" className="ghost-btn" onClick={() => window.print()}>
               <Printer size={16} weight="bold" />
               Print
             </button>
@@ -132,9 +90,7 @@ export default function App() {
         </article>
       </main>
 
-      <footer className="status">
-        <span>{wordLabel(words)}</span>
-      </footer>
+      <StatusBar editor={editor} />
     </div>
   )
 }
