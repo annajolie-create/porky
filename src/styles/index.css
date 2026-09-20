@@ -1,5 +1,6 @@
 @import './chrome.css';
 @import './page.css';
+@import './library.css';
 @import './print.css';
 
 :root {
