@@ -5,9 +5,20 @@ function wordLabel(count: number) {
   return count === 1 ? '1 word' : `${count.toLocaleString()} words`
 }
 
-export function StatusBar({ editor }: { editor: Editor | null }) {
+export function StatusBar({
+  editor,
+  notice,
+}: {
+  editor: Editor | null
+  notice?: string | null
+}) {
   return (
     <footer className="status">
+      {notice ? (
+        <span className="status-notice" role="status">
+          {notice}
+        </span>
+      ) : null}
       {editor ? <Counts editor={editor} /> : <span>&nbsp;</span>}
     </footer>
   )

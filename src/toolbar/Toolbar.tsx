@@ -21,6 +21,7 @@ import { TextSuperscript } from '@phosphor-icons/react/dist/csr/TextSuperscript'
 import { TextUnderline } from '@phosphor-icons/react/dist/csr/TextUnderline'
 import { BlockStyleSelect } from './BlockStyleSelect'
 import { HighlightControl, TextColorControl } from './ColorControls'
+import { ImageControl } from './ImageControl'
 import { FontFamilyControl, FontSizeControl } from './FontControls'
 import { LinkControl } from './LinkControl'
 import { AlignControl, LineSpacingControl } from './ParagraphControls'
@@ -41,7 +42,13 @@ function useIsNarrow() {
   return narrow
 }
 
-export function Toolbar({ editor }: { editor: Editor }) {
+export function Toolbar({
+  editor,
+  onNotice,
+}: {
+  editor: Editor
+  onNotice: (message: string) => void
+}) {
   const narrow = useIsNarrow()
   const marks = useEditorState({
     editor,
@@ -147,6 +154,7 @@ export function Toolbar({ editor }: { editor: Editor }) {
 
       <Divider />
       <LinkControl editor={editor} />
+      <ImageControl editor={editor} onNotice={onNotice} />
 
       {narrow ? null : (
         <>

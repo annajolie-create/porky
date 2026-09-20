@@ -6,6 +6,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import { TextStyleKit } from '@tiptap/extension-text-style'
 import StarterKit from '@tiptap/starter-kit'
 import { BlockAttributes } from './blockAttributes'
+import { ImageNode } from './ImageNode'
 
 /**
  * StarterKit 3.x already bundles bold, italic, underline, strike, code,
@@ -35,6 +36,7 @@ export function buildExtensions() {
     Superscript,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     BlockAttributes,
+    ImageNode,
 
     Placeholder.configure({
       placeholder: 'Type here. Enter starts a new paragraph.',

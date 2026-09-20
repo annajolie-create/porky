@@ -384,3 +384,18 @@
     transition: none;
   }
 }
+
+.status {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-notice {
+  color: #b3261e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .status-notice {
+    color: #ff9a8f;
+  }
+}
