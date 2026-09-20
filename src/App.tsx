@@ -54,7 +54,11 @@ export default function App() {
     },
   })
 
-  editorRef.current = editor
+  // Assigned in an effect rather than during render. The paste and drop
+  // handlers only fire on user interaction, long after mount.
+  useEffect(() => {
+    editorRef.current = editor
+  }, [editor])
 
   useEffect(() => {
     if (!notice) return

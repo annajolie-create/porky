@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import Image from '@tiptap/extension-image'
-import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react'
+import { NodeViewWrapper } from '@tiptap/react'
 import type { ReactNodeViewProps } from '@tiptap/react'
 import { AlignCenterHorizontal } from '@phosphor-icons/react/dist/csr/AlignCenterHorizontal'
 import { AlignLeft } from '@phosphor-icons/react/dist/csr/AlignLeft'
@@ -17,7 +16,7 @@ const ALIGNMENTS = [
 const WIDTH_PRESETS = ['25%', '50%', '75%', '100%']
 const MIN_PERCENT = 10
 
-function ImageView({ node, updateAttributes, deleteNode, selected, editor }: ReactNodeViewProps) {
+export function ImageView({ node, updateAttributes, deleteNode, selected, editor }: ReactNodeViewProps) {
   const frame = useRef<HTMLDivElement>(null)
   const width = (node.attrs.width as string | null) ?? '100%'
   const align = (node.attrs.align as string | null) ?? 'center'
@@ -133,40 +132,3 @@ function ImageView({ node, updateAttributes, deleteNode, selected, editor }: Rea
     </NodeViewWrapper>
   )
 }
-
-/**
- * Width is a percentage of the text column, not a pixel count, so an image
- * keeps its proportions across the mobile breakpoint, the A4 print page and
- * any future page size.
- */
-export const ImageNode = Image.extend({
-  draggable: true,
-
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      width: {
-        default: '100%',
-        parseHTML: (element) => element.getAttribute('data-width') ?? '100%',
-        renderHTML: (attributes) => ({ 'data-width': attributes.width }),
-      },
-      align: {
-        default: 'center',
-        parseHTML: (element) => element.getAttribute('data-align') ?? 'center',
-        renderHTML: (attributes) => ({ 'data-align': attributes.align }),
-      },
-    }
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(ImageView)
-  },
-}).configure({
-  inline: false,
-  // Without this the parse rule is img[src]:not([src^="data:"]) and every
-  // embedded image would be silently dropped on load.
-  allowBase64: true,
-  // The built-in resizer only reads width in its constructor, so width presets
-  // would not take effect. The node view above owns resizing instead.
-  resize: false,
-})
