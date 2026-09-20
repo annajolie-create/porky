@@ -6,10 +6,10 @@
 }
 
 .page {
-  width: min(816px, 100%);
-  min-height: 1056px;
+  width: min(var(--page-w), 100%);
+  min-height: var(--page-h);
   margin: 0 auto;
-  padding: 96px 88px 120px;
+  padding: var(--page-pad-y) var(--page-pad-x) calc(var(--page-pad-y) + 26px);
   background: var(--paper);
   color: #1c2430;
   box-shadow: var(--shadow);

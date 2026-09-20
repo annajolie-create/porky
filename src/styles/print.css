@@ -1,12 +1,40 @@
+/* The page box on screen is A4 at 96dpi; @page owns the real margins, so the
+   .page padding is stripped rather than doubled up. */
+@page {
+  size: A4;
+  margin: 25mm 20mm;
+}
+
 @media print {
   .chrome,
-  .status {
+  .status,
+  .drawer,
+  .drawer-scrim,
+  .tool-pop,
+  .img-bar,
+  .img-handle {
     display: none !important;
+  }
+
+  /* Dark mode must not follow the document onto paper. */
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 0;
+    background: #fff;
+  }
+
+  .app {
+    display: block;
   }
 
   .desk {
     padding: 0;
-    background: white;
+    background: #fff;
   }
 
   .page {
@@ -14,6 +42,52 @@
     min-height: 0;
     margin: 0;
     padding: 0;
+    background: #fff;
+    color: #000;
     box-shadow: none;
+    border-radius: 0;
+  }
+
+  .page .tiptap {
+    min-height: 0;
+  }
+
+  /* Without this browsers drop backgrounds, and every highlight disappears. */
+  .page-body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .page-body p,
+  .page-body li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .page-body h1,
+  .page-body h2,
+  .page-body h3 {
+    break-after: avoid-page;
+    break-inside: avoid;
+  }
+
+  .page-body li,
+  .page-body blockquote,
+  .page-body pre,
+  .page-body .img-block {
+    break-inside: avoid;
+  }
+
+  .page-body img {
+    max-width: 100%;
+  }
+
+  .page-body a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .img-block[data-selected='true'] .img-frame img {
+    outline: none;
   }
 }

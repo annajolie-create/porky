@@ -16,6 +16,12 @@
   --shadow: 0 1px 2px rgb(28 36 48 / 6%), 0 18px 40px rgb(28 36 48 / 12%);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ui: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+
+  /* A4 at 96dpi, with margins that match the 20/25mm used when printing. */
+  --page-w: 794px;
+  --page-h: 1123px;
+  --page-pad-x: 76px;
+  --page-pad-y: 94px;
   --doc: 'Source Serif 4', 'Iowan Old Style', 'Palatino Linotype', serif;
   color-scheme: light;
 }
