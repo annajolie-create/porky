@@ -40,8 +40,24 @@ export type ProjectState = Project & {
   planVersion: number
   /** Pending request for the agent panel from elsewhere in the UI. */
   agentRequest: { id: string; prompt: string; paragraphId?: string; selection?: string } | null
+  /** Comment whose card is open; highlights its anchor. */
+  activeCommentId: string | null
+  /** Whether the left sidebar in Write mode is open. */
+  sidebarOpen: boolean
+  /** Sections whose order in the essay differs from the plan. */
+  sectionMismatch: { outOfOrder: string[] }
+  /** A citation was just inserted; the live checker picks this up. */
+  citationCheckRequest: { id: string; sourceId: string } | null
+  /** Paragraph to scroll to after switching to Write. */
+  pendingScrollParagraphId: string | null
 
   setTab: (tab: Tab) => void
+  setActiveComment: (id: string | null) => void
+  setSidebarOpen: (open: boolean) => void
+  setSectionMismatch: (mismatch: { outOfOrder: string[] }) => void
+  requestCitationCheck: (sourceId: string) => void
+  clearCitationCheck: () => void
+  setPendingScroll: (id: string | null) => void
   setHydrated: () => void
   setTitle: (title: string) => void
   updateContext: (patch: Partial<Context>) => void
@@ -92,8 +108,23 @@ export const useProject = create<ProjectState>()(
       activeParagraphId: null,
       planVersion: 0,
       agentRequest: null,
+      activeCommentId: null,
+      sidebarOpen: true,
+      sectionMismatch: { outOfOrder: [] },
+      citationCheckRequest: null,
+      pendingScrollParagraphId: null,
 
       setTab: (tab) => setState({ tab }),
+      setActiveComment: (activeCommentId) => setState({ activeCommentId }),
+      setSidebarOpen: (sidebarOpen) => setState({ sidebarOpen }),
+      setSectionMismatch: (sectionMismatch) => {
+        const current = getState().sectionMismatch
+        if (current.outOfOrder.join('|') !== sectionMismatch.outOfOrder.join('|')) setState({ sectionMismatch })
+      },
+      requestCitationCheck: (sourceId) =>
+        setState({ citationCheckRequest: { id: Math.random().toString(36).slice(2), sourceId } }),
+      clearCitationCheck: () => setState({ citationCheckRequest: null }),
+      setPendingScroll: (pendingScrollParagraphId) => setState({ pendingScrollParagraphId }),
       setHydrated: () => setState({ hydrated: true }),
       setTitle: (title) => setState({ title, ...touch() }),
       updateContext: (patch) =>
@@ -194,12 +225,26 @@ export const useProject = create<ProjectState>()(
       storage: createJSONStorage(() => idbStorage),
       partialize: (state) => {
         // Transient UI state is not persisted.
-        const { hydrated, activeParagraphId, agentRequest, planVersion, ...rest } = state
+        const { hydrated, activeParagraphId, agentRequest, planVersion, activeCommentId, sectionMismatch, citationCheckRequest, pendingScrollParagraphId, ...rest } = state
         void hydrated
         void activeParagraphId
         void agentRequest
         void planVersion
-        return rest as Omit<ProjectState, 'hydrated' | 'activeParagraphId' | 'agentRequest' | 'planVersion'>
+        void activeCommentId
+        void sectionMismatch
+        void citationCheckRequest
+        void pendingScrollParagraphId
+        return rest as Omit<
+          ProjectState,
+          | 'hydrated'
+          | 'activeParagraphId'
+          | 'agentRequest'
+          | 'planVersion'
+          | 'activeCommentId'
+          | 'sectionMismatch'
+          | 'citationCheckRequest'
+          | 'pendingScrollParagraphId'
+        >
       },
       onRehydrateStorage: () => (state) => {
         state?.setHydrated()

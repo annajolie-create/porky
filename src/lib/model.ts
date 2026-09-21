@@ -108,18 +108,19 @@ export type Comment = {
   createdAt: number
 }
 
+export type CitationVerdict = 'fits' | 'weak' | 'no-fit'
+
 export type CheckerFlag = {
   paragraphId: string
   planFit?: { probability: number; reason: string }
   rambling?: { probability: number; reason: string }
+  citationFit?: { sourceId: string; verdict: CitationVerdict; reason: string }
   /** Section Jev thinks the paragraph belongs to when it does not fit. */
   suggestedSectionId?: string | null
   dismissed: boolean
   /** Hash of the paragraph text the flag was computed for. */
   textHash: string
 }
-
-export type CitationVerdict = 'fits' | 'weak' | 'no-fit'
 
 export type FinalCheckReport = {
   createdAt: number

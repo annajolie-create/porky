@@ -114,7 +114,7 @@ export function contentFromText(text: string, sources: Source[]): JSONContent[] 
     const source = lookup.get(match[0])
     if (!source) continue
     if (start > last) out.push({ type: 'text', text: text.slice(last, start) })
-    out.push({ type: 'citation', attrs: { sourceId: source.id } })
+    out.push({ type: 'citation', attrs: { sourceId: source.id, label: inTextCitation(source) } })
     last = start + match[0].length
   }
   if (last < text.length) out.push({ type: 'text', text: text.slice(last) })
