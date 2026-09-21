@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useProject } from '@/lib/store'
+import { rehydrateProject, useProject } from '@/lib/store'
 import type { Tab } from '@/lib/model'
 import { cx } from './ui'
 import { ContextTab } from './context/ContextTab'
@@ -25,10 +25,42 @@ export function AppShell() {
   const [health, setHealth] = useState<{ hasKey: boolean } | null>(null)
 
   useEffect(() => {
-    fetch('/api/health')
-      .then((r) => r.json())
-      .then((data) => setHealth(data))
-      .catch(() => setHealth({ hasKey: false }))
+    let cancelled = false
+    const stop = useProject.persist.onFinishHydration(() => {
+      if (!cancelled) useProject.setState({ hydrated: true })
+    })
+    void rehydrateProject().catch(() => {
+      if (!cancelled) useProject.setState({ hydrated: true })
+    })
+    const timeout = window.setTimeout(() => {
+      if (!useProject.getState().hydrated) useProject.setState({ hydrated: true })
+    }, 2000)
+    return () => {
+      cancelled = true
+      stop()
+      window.clearTimeout(timeout)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const response = await fetch('/api/health', { cache: 'no-store' })
+          if (!response.ok) throw new Error(`health ${response.status}`)
+          const data = (await response.json()) as { hasKey?: boolean }
+          if (!cancelled) setHealth({ hasKey: Boolean(data.hasKey) })
+          return
+        } catch {
+          await new Promise((resolve) => window.setTimeout(resolve, 300 * (attempt + 1)))
+        }
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   if (!hydrated) {

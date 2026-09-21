@@ -14,13 +14,15 @@ export type ParagraphDecorationState = {
   classes: Record<string, string[]>
   /** Inline highlight ranges for comments: paragraphId -> quotes. */
   comments: { paragraphId: string; quote: string; commentId: string; active: boolean }[]
+  /** Marked text pinned for the agent chat after the editor loses focus. */
+  held?: { paragraphId: string; quote: string }[]
 }
 
 export const decorationsKey = new PluginKey<{ state: ParagraphDecorationState; set: DecorationSet }>('paragraphDecorations')
 
 export const DECORATION_META = 'paragraphDecorations'
 
-const EMPTY: ParagraphDecorationState = { classes: {}, comments: [] }
+const EMPTY: ParagraphDecorationState = { classes: {}, comments: [], held: [] }
 
 export const ParagraphDecorations = Extension.create({
   name: 'paragraphDecorations',
@@ -73,6 +75,19 @@ function build(doc: PMNode, state: ParagraphDecorationState): DecorationSet {
               'data-comment': comment.commentId,
             }),
           )
+        }
+      }
+    }
+    const held = state.held?.filter((h) => h.paragraphId === id) ?? []
+    if (held.length) {
+      const text = node.textContent
+      for (const mark of held) {
+        const index = mark.quote ? text.indexOf(mark.quote) : -1
+        if (index === -1) continue
+        const from = offsetToPos(node, pos + 1, index)
+        const to = offsetToPos(node, pos + 1, index + mark.quote.length)
+        if (from !== null && to !== null && to > from) {
+          decorations.push(Decoration.inline(from, to, { class: 'held-sel' }))
         }
       }
     }

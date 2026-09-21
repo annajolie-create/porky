@@ -46,6 +46,8 @@ export function AgentPanel() {
   const agentRequest = useProject((s) => s.agentRequest)
   const clearAgentRequest = useProject((s) => s.clearAgentRequest)
   const activeParagraphId = useProject((s) => s.activeParagraphId)
+  const heldSelection = useProject((s) => s.heldSelection)
+  const clearHeldSelection = useProject((s) => s.clearHeldSelection)
 
   const [messages, setMessages] = useState<ChatTurn[]>([])
   const [draft, setDraft] = useState('')
@@ -151,6 +153,8 @@ export function AgentPanel() {
         text: p.text,
       })),
       selection: (() => {
+        const held = useProject.getState().heldSelection
+        if (held?.text) return { text: held.text, paragraphIds: held.paragraphIds }
         const sel = selectedText(editor)
         if (!sel) return undefined
         return { text: sel, paragraphIds: selectedParagraphIds(editor) }
@@ -257,7 +261,14 @@ export function AgentPanel() {
   })
 
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div
+      className="h-full flex flex-col min-h-0"
+      onMouseDown={(e) => {
+        const target = e.target as HTMLElement
+        if (target.closest('textarea, input, [contenteditable="true"]')) return
+        e.preventDefault()
+      }}
+    >
       <header className="shrink-0 h-10 px-3 border-b border-line flex items-center gap-2">
         <Sparkle size={15} weight="fill" className="text-accent" />
         <span className="text-[13px] font-semibold">Agent</span>
@@ -276,6 +287,10 @@ export function AgentPanel() {
                   onClick={() => {
                     if (s.label === 'Draft this section' && cursorSection) {
                       void send(`Write section “${cursorSection.title}” (${cursorSection.id}) from the plan. Use insert_paragraph for each paragraph, in order, assigned to that section. Cite sources in APA.`)
+                    } else if (s.label === 'Improve selection' && heldSelection?.text) {
+                      void send(
+                        `Improve this selected text: clearer, tighter, still in the same voice. Propose an edit.\n\n"""${heldSelection.text}"""`,
+                      )
                     } else {
                       void send(s.prompt)
                     }
@@ -337,6 +352,19 @@ export function AgentPanel() {
       </div>
 
       <div className="shrink-0 p-3 border-t border-line">
+        {heldSelection?.text ? (
+          <div className="mb-2 flex items-start gap-2 rounded-md bg-accent-soft px-2.5 py-1.5 text-[12px] text-ink-soft">
+            <span className="flex-1 min-w-0 line-clamp-2">Using marked text: “{heldSelection.text}”</span>
+            <button
+              type="button"
+              aria-label="Clear marked text"
+              onClick={clearHeldSelection}
+              className="shrink-0 p-0.5 rounded text-muted hover:text-ink"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ) : null}
         <div className="flex items-end gap-2 rounded-md border border-line px-3 py-2 focus-within:border-accent">
           <textarea
             value={draft}
@@ -348,7 +376,7 @@ export function AgentPanel() {
               }
             }}
             rows={Math.min(4, Math.max(1, draft.split('\n').length))}
-            placeholder="Ask the agent…"
+            placeholder={heldSelection?.text ? 'Ask about the marked text…' : 'Ask the agent…'}
             className="flex-1 resize-none bg-transparent text-[13px] outline-none placeholder:text-muted/70"
             disabled={busy}
           />

@@ -3,9 +3,10 @@
 import { useMemo } from 'react'
 import { WarningCircle } from '@phosphor-icons/react/dist/csr/WarningCircle'
 import { PencilSimple } from '@phosphor-icons/react/dist/csr/PencilSimple'
+import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { useProject } from '@/lib/store'
 import { paragraphsOf } from '@/lib/doc'
-import { scrollToSection } from '@/editor/commands'
+import { addParagraphInSection, startWritingInSection } from '@/editor/commands'
 import { useEssayEditorContext } from './EditorContext'
 import { cx } from '../ui'
 
@@ -85,13 +86,13 @@ export function MiniOutline() {
             const words = wordsBySection.get(node.id) ?? 0
             const flags = flagsBySection.get(node.id)
             return (
-              <li key={node.id}>
+              <li key={node.id} className="group/row flex items-start gap-0.5">
                 <button
                   type="button"
-                  onClick={() => editor && scrollToSection(editor, node.id)}
-                  title={flags?.join('\n')}
+                  onClick={() => editor && startWritingInSection(editor, node.id, plan)}
+                  title={flags?.join('\n') || (words ? 'Jump to this section' : 'Start writing this section')}
                   className={cx(
-                    'w-full text-left rounded-md px-2 py-1.5 flex items-start gap-2 transition-colors',
+                    'flex-1 min-w-0 text-left rounded-md px-2 py-1.5 flex items-start gap-2 transition-colors',
                     active ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper',
                   )}
                 >
@@ -99,11 +100,22 @@ export function MiniOutline() {
                   <span className="flex-1 min-w-0">
                     <span className="block text-[12.5px] leading-snug truncate">{node.title}</span>
                     <span className="block text-[11px] text-muted tabular-nums mt-0.5">
-                      {words ? words.toLocaleString() : '–'}
-                      {node.targetWords ? ` / ${node.targetWords}` : ''} words
+                      {words ? words.toLocaleString() : 'Start writing'}
+                      {node.targetWords ? ` / ${node.targetWords}` : words ? ' words' : ''}
                     </span>
                   </span>
                   {flags?.length ? <WarningCircle size={14} weight="fill" className="mt-[3px] text-warn shrink-0" aria-label={flags.join(' ')} /> : null}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`New paragraph in ${node.title}`}
+                  title="Start a new paragraph here"
+                  onClick={() => editor && addParagraphInSection(editor, node.id, plan)}
+                  className={cx(
+                    'mt-1 size-6 grid place-items-center rounded text-muted hover:bg-paper hover:text-accent opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100',
+                  )}
+                >
+                  <Plus size={12} weight="bold" />
                 </button>
               </li>
             )

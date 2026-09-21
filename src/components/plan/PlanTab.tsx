@@ -5,13 +5,13 @@ import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { ShieldCheck } from '@phosphor-icons/react/dist/csr/ShieldCheck'
 import { TabPage } from '../AppShell'
 import { Button, EmptyState, ErrorNote, Pill, SectionHeading } from '../ui'
-import { useProject } from '@/lib/store'
+import { selectContextDrifted, useProject } from '@/lib/store'
 import { newId } from '@/lib/ids'
 import type { PlanFlag, PlanNode } from '@/lib/model'
 import { relevantPassages } from '@/lib/passages'
 import { postJSON } from '@/lib/sse'
 import { PlanCard } from './PlanCard'
-import { PlanChat } from './PlanChat'
+import { PlanChat, REDO_PLAN_PROMPT } from './PlanChat'
 
 type CheckResult = {
   answersTask: { probability: number }
@@ -26,6 +26,9 @@ export function PlanTab() {
   const addNode = useProject((s) => s.addNode)
   const setNodeFlags = useProject((s) => s.setNodeFlags)
   const setTab = useProject((s) => s.setTab)
+  const drifted = useProject(selectContextDrifted)
+  const requestPlanRevision = useProject((s) => s.requestPlanRevision)
+  const acknowledgeContextDrift = useProject((s) => s.acknowledgeContextDrift)
   const [checking, setChecking] = useState(false)
   const [checkError, setCheckError] = useState<string | null>(null)
   const [taskVerdict, setTaskVerdict] = useState<number | null>(null)
@@ -118,6 +121,20 @@ export function PlanTab() {
         }
       />
 
+      {drifted ? (
+        <div className="mb-6 flex items-start justify-between gap-4 rounded-md border border-warn/40 bg-warn-bg px-4 py-3">
+          <p className="text-[13.5px] text-ink leading-relaxed">Wait, context has changed. Should we redo the plan?</p>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="primary" onClick={() => requestPlanRevision(REDO_PLAN_PROMPT)}>
+              Redo plan
+            </Button>
+            <Button variant="ghost" onClick={() => acknowledgeContextDrift()}>
+              Keep this plan
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-8 items-start">
         <div className="min-w-0">
           {plan.length ? (
@@ -156,12 +173,10 @@ export function PlanTab() {
                   : 'Create the plan with the AI from your task and sources, or build it by hand section by section.'
               }
               action={
-                planStatus !== 'asking' ? (
-                  <Button variant="ghost" onClick={addSection}>
-                    <Plus size={14} weight="bold" />
-                    Add a section by hand
-                  </Button>
-                ) : null
+                <Button variant="ghost" onClick={addSection}>
+                  <Plus size={14} weight="bold" />
+                  Add a section by hand
+                </Button>
               }
             />
           )}

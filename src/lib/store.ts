@@ -5,7 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import type { StateStorage } from 'zustand/middleware'
 import { del, get, set } from 'idb-keyval'
 import type { JSONContent } from '@tiptap/core'
-import { defaultProject } from './model'
+import { contextFingerprint, defaultProject } from './model'
 import type {
   CheckerFlag,
   Comment,
@@ -18,6 +18,7 @@ import type {
   Suggestion,
   Tab,
 } from './model'
+import type { CapturedSelection } from '@/editor/commands'
 
 /**
  * One store for the whole project. Persisted to IndexedDB (source texts can
@@ -26,9 +27,45 @@ import type {
  */
 
 const idbStorage: StateStorage = {
-  getItem: async (name) => (await get<string>(name)) ?? null,
-  setItem: async (name, value) => set(name, value),
-  removeItem: async (name) => del(name),
+  getItem: async (name) => {
+    if (typeof indexedDB === 'undefined') return null
+    try {
+      const value = await get(name)
+      if (value == null) return null
+      return typeof value === 'string' ? value : JSON.stringify(value)
+    } catch {
+      return null
+    }
+  },
+  setItem: async (name, value) => {
+    if (typeof indexedDB === 'undefined') return
+    try {
+      await set(name, value)
+    } catch {
+      // Quota or a locked DB should not freeze the app.
+    }
+  },
+  removeItem: async (name) => {
+    if (typeof indexedDB === 'undefined') return
+    try {
+      await del(name)
+    } catch {
+      // ignore
+    }
+  },
+}
+
+function finishHydration() {
+  const s = useProject.getState()
+  try {
+    if (s.plan.length && !s.planContextFingerprint && s.context) {
+      useProject.setState({ planContextFingerprint: contextFingerprint(s.context), hydrated: true })
+      return
+    }
+  } catch {
+    // Corrupt persisted context should still open the editor.
+  }
+  if (!s.hydrated) useProject.setState({ hydrated: true })
 }
 
 export type ProjectState = Project & {
@@ -50,8 +87,17 @@ export type ProjectState = Project & {
   citationCheckRequest: { id: string; sourceId: string } | null
   /** Paragraph to scroll to after switching to Write. */
   pendingScrollParagraphId: string | null
+  /** Essay text marked for the agent; survives clicking the chat. */
+  heldSelection: CapturedSelection | null
+  /** Pending prompt for the plan chat (e.g. redo after context drift). */
+  planRequest: { id: string; prompt: string } | null
 
   setTab: (tab: Tab) => void
+  setHeldSelection: (selection: CapturedSelection | null) => void
+  clearHeldSelection: () => void
+  requestPlanRevision: (prompt: string) => void
+  clearPlanRequest: () => void
+  acknowledgeContextDrift: () => void
   setActiveComment: (id: string | null) => void
   setSidebarOpen: (open: boolean) => void
   setSectionMismatch: (mismatch: { outOfOrder: string[] }) => void
@@ -113,8 +159,28 @@ export const useProject = create<ProjectState>()(
       sectionMismatch: { outOfOrder: [] },
       citationCheckRequest: null,
       pendingScrollParagraphId: null,
+      heldSelection: null,
+      planRequest: null,
 
       setTab: (tab) => setState({ tab }),
+      setHeldSelection: (heldSelection) => {
+        const current = getState().heldSelection
+        if (
+          current?.text === heldSelection?.text &&
+          (current?.paragraphIds.join('|') ?? '') === (heldSelection?.paragraphIds.join('|') ?? '')
+        ) {
+          return
+        }
+        setState({ heldSelection })
+      },
+      clearHeldSelection: () => {
+        if (getState().heldSelection) setState({ heldSelection: null })
+      },
+      requestPlanRevision: (prompt) =>
+        setState({ planRequest: { id: Math.random().toString(36).slice(2), prompt }, tab: 'plan' }),
+      clearPlanRequest: () => setState({ planRequest: null }),
+      acknowledgeContextDrift: () =>
+        setState((s) => ({ planContextFingerprint: contextFingerprint(s.context), ...touch() })),
       setActiveComment: (activeCommentId) => setState({ activeCommentId }),
       setSidebarOpen: (sidebarOpen) => setState({ sidebarOpen }),
       setSectionMismatch: (sectionMismatch) => {
@@ -140,7 +206,13 @@ export const useProject = create<ProjectState>()(
         setState((s) => ({ sources: s.sources.filter((src) => src.id !== id), ...touch() })),
 
       setPlan: (plan) =>
-        setState((s) => ({ plan, planVersion: s.planVersion + 1, planStatus: plan.length ? 'ready' : s.planStatus, ...touch() })),
+        setState((s) => ({
+          plan,
+          planVersion: s.planVersion + 1,
+          planStatus: plan.length ? 'ready' : s.planStatus,
+          planContextFingerprint: plan.length ? contextFingerprint(s.context) : null,
+          ...touch(),
+        })),
       updateNode: (id, patch) =>
         setState((s) => ({
           plan: s.plan.map((n) => (n.id === id ? { ...n, ...patch } : n)),
@@ -151,14 +223,24 @@ export const useProject = create<ProjectState>()(
         setState((s) => {
           const plan = [...s.plan]
           plan.splice(index ?? plan.length, 0, node)
-          return { plan, planVersion: s.planVersion + 1, planStatus: 'ready', ...touch() }
+          return {
+            plan,
+            planVersion: s.planVersion + 1,
+            planStatus: 'ready',
+            planContextFingerprint: s.planContextFingerprint ?? contextFingerprint(s.context),
+            ...touch(),
+          }
         }),
       removeNode: (id) =>
-        setState((s) => ({
-          plan: s.plan.filter((n) => n.id !== id),
-          planVersion: s.planVersion + 1,
-          ...touch(),
-        })),
+        setState((s) => {
+          const plan = s.plan.filter((n) => n.id !== id)
+          return {
+            plan,
+            planVersion: s.planVersion + 1,
+            planContextFingerprint: plan.length ? s.planContextFingerprint : null,
+            ...touch(),
+          }
+        }),
       moveNode: (id, direction) =>
         setState((s) => {
           const index = s.plan.findIndex((n) => n.id === id)
@@ -218,14 +300,38 @@ export const useProject = create<ProjectState>()(
       requestAgent: (request) =>
         setState({ agentRequest: { id: Math.random().toString(36).slice(2), ...request }, tab: 'write' }),
       clearAgentRequest: () => setState({ agentRequest: null }),
-      resetProject: () => setState({ ...defaultProject(), tab: 'context', planVersion: 0 }),
+      resetProject: () =>
+        setState({ ...defaultProject(), tab: 'context', planVersion: 0, heldSelection: null, planRequest: null }),
     }),
     {
       name: 'porky-essay-v1',
       storage: createJSONStorage(() => idbStorage),
+      skipHydration: true,
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<ProjectState>
+        return {
+          ...current,
+          ...saved,
+          context: { ...current.context, ...(saved.context ?? {}) },
+          plan: saved.plan ?? current.plan,
+          sources: saved.sources ?? current.sources,
+        }
+      },
       partialize: (state) => {
         // Transient UI state is not persisted.
-        const { hydrated, activeParagraphId, agentRequest, planVersion, activeCommentId, sectionMismatch, citationCheckRequest, pendingScrollParagraphId, ...rest } = state
+        const {
+          hydrated,
+          activeParagraphId,
+          agentRequest,
+          planVersion,
+          activeCommentId,
+          sectionMismatch,
+          citationCheckRequest,
+          pendingScrollParagraphId,
+          heldSelection,
+          planRequest,
+          ...rest
+        } = state
         void hydrated
         void activeParagraphId
         void agentRequest
@@ -234,6 +340,8 @@ export const useProject = create<ProjectState>()(
         void sectionMismatch
         void citationCheckRequest
         void pendingScrollParagraphId
+        void heldSelection
+        void planRequest
         return rest as Omit<
           ProjectState,
           | 'hydrated'
@@ -244,15 +352,32 @@ export const useProject = create<ProjectState>()(
           | 'sectionMismatch'
           | 'citationCheckRequest'
           | 'pendingScrollParagraphId'
+          | 'heldSelection'
+          | 'planRequest'
         >
       },
-      onRehydrateStorage: () => (state) => {
-        state?.setHydrated()
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) console.warn('Porky could not restore the last session.', error)
+        finishHydration()
       },
     },
   ),
 )
 
+/** Load IndexedDB into the store. Safe to call more than once. */
+export function rehydrateProject(): Promise<void> {
+  if (useProject.persist.hasHydrated()) {
+    finishHydration()
+    return Promise.resolve()
+  }
+  return Promise.resolve(useProject.persist.rehydrate()).then(() => undefined)
+}
+
 /** Selectors used from several places. */
 export const selectPendingSuggestions = (s: ProjectState) => s.suggestions
 export const selectLockedParagraphIds = (s: ProjectState) => new Set(s.suggestions.map((x) => x.paragraphId))
+export const selectContextDrifted = (s: ProjectState) =>
+  s.plan.length > 0 &&
+  s.planContextFingerprint != null &&
+  Boolean(s.context) &&
+  contextFingerprint(s.context) !== s.planContextFingerprint

@@ -150,7 +150,22 @@ export type Project = {
   checkerFlags: Record<string, CheckerFlag>
   checkersEnabled: boolean
   report: FinalCheckReport | null
+  /** Snapshot of context when the current plan was last accepted; used to detect drift. */
+  planContextFingerprint: string | null
   updatedAt: number
+}
+
+/** Stable hash of the assignment fields the plan was built from. */
+export function contextFingerprint(context: Context): string {
+  return JSON.stringify({
+    task: context.task.trim(),
+    framework: context.framework.trim(),
+    grading: context.grading.trim(),
+    lengthWords: context.lengthWords,
+    style: context.style,
+    language: context.language,
+    references: context.referencePieces.map((p) => `${p.id}:${p.name}`).join('|'),
+  })
 }
 
 export const LANGUAGES = ['English', 'German', 'Spanish', 'French', 'Italian', 'Dutch', 'Portuguese'] as const
@@ -188,6 +203,7 @@ export function defaultProject(): Project {
     checkerFlags: {},
     checkersEnabled: true,
     report: null,
+    planContextFingerprint: null,
     updatedAt: Date.now(),
   }
 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ArrowDown } from '@phosphor-icons/react/dist/csr/ArrowDown'
 import { ArrowUp } from '@phosphor-icons/react/dist/csr/ArrowUp'
 import { CaretDown } from '@phosphor-icons/react/dist/csr/CaretDown'
+import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { Trash } from '@phosphor-icons/react/dist/csr/Trash'
 import { WarningCircle } from '@phosphor-icons/react/dist/csr/WarningCircle'
 import { X } from '@phosphor-icons/react/dist/csr/X'
@@ -17,6 +18,7 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
   const updateNode = useProject((s) => s.updateNode)
   const removeNode = useProject((s) => s.removeNode)
   const moveNode = useProject((s) => s.moveNode)
+  const addNode = useProject((s) => s.addNode)
   const sources = useProject((s) => s.sources)
   const [open, setOpen] = useState(true)
 
@@ -58,6 +60,25 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
           </IconButton>
           <IconButton label="Move down" disabled={index === total - 1} onClick={() => moveNode(node.id, 1)}>
             <ArrowDown size={14} />
+          </IconButton>
+          <IconButton
+            label="Add section below"
+            onClick={() =>
+              addNode(
+                {
+                  id: newId('sec'),
+                  title: 'New section',
+                  claim: '',
+                  keyPoints: [],
+                  evidence: [],
+                  targetWords: null,
+                  flags: [],
+                },
+                index + 1,
+              )
+            }
+          >
+            <Plus size={14} />
           </IconButton>
           <IconButton label="Delete section" onClick={() => removeNode(node.id)} danger>
             <Trash size={14} />

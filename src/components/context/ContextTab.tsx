@@ -5,7 +5,7 @@ import { FilePlus } from '@phosphor-icons/react/dist/csr/FilePlus'
 import { X } from '@phosphor-icons/react/dist/csr/X'
 import { TabPage } from '../AppShell'
 import { Button, ErrorNote, Field, Input, Select, SectionHeading, Textarea } from '../ui'
-import { useProject } from '@/lib/store'
+import { selectContextDrifted, useProject } from '@/lib/store'
 import { LANGUAGES, STYLES } from '@/lib/model'
 import type { EssayStyle } from '@/lib/model'
 import { newId } from '@/lib/ids'
@@ -17,6 +17,8 @@ export function ContextTab() {
   const setTitle = useProject((s) => s.setTitle)
   const update = useProject((s) => s.updateContext)
   const setTab = useProject((s) => s.setTab)
+  const drifted = useProject(selectContextDrifted)
+  const planLength = useProject((s) => s.plan.length)
 
   return (
     <TabPage>
@@ -24,6 +26,17 @@ export function ContextTab() {
         title="Context"
         description="What you have to deliver. Every AI feature in the app reads this, so the more precise it is, the better the plan, the drafts and the checks."
       />
+
+      {drifted ? (
+        <div className="mb-6 flex items-start justify-between gap-4 rounded-md border border-warn/40 bg-warn-bg px-4 py-3">
+          <p className="text-[13px] text-ink-soft leading-relaxed">
+            You changed the assignment after the plan was built. Update the plan so the editor and the agent stay in sync.
+          </p>
+          <Button variant="primary" className="shrink-0" onClick={() => setTab('plan')}>
+            Update plan
+          </Button>
+        </div>
+      ) : null}
 
       <div className="space-y-6">
         <Field label="Essay title" hint="Working title. You can change it any time from the Write tab.">
@@ -84,9 +97,16 @@ export function ContextTab() {
 
         <div className="flex items-center justify-between pt-4 border-t border-line">
           <span className="text-[12.5px] text-muted">Saved automatically.</span>
-          <Button variant="primary" onClick={() => setTab('sources')}>
-            Next: Sources
-          </Button>
+          <div className="flex items-center gap-2">
+            {drifted ? (
+              <Button variant="primary" onClick={() => setTab('plan')}>
+                Update plan
+              </Button>
+            ) : null}
+            <Button variant={drifted ? 'secondary' : 'primary'} onClick={() => setTab(planLength ? 'plan' : 'sources')}>
+              {planLength ? 'Back to plan' : 'Next: Sources'}
+            </Button>
+          </div>
         </div>
       </div>
     </TabPage>

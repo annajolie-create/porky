@@ -22,7 +22,7 @@ export class AIError extends Error {
 }
 
 function apiKey(): string {
-  const key = process.env.OPENROUTER_API_KEY
+  const key = process.env.OPENROUTER_API_KEY?.trim()
   if (!key) {
     throw new AIError(
       'No OpenRouter key. Copy .env.example to .env.local, add OPENROUTER_API_KEY and restart the dev server.',

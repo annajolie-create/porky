@@ -7,7 +7,7 @@ import { buildExtensions } from '@/editor/extensions'
 import { DECORATION_META } from '@/editor/decorations'
 import type { ParagraphDecorationState } from '@/editor/decorations'
 import { paragraphAt } from '@/editor/paragraphIds'
-import { scrollToParagraph } from '@/editor/commands'
+import { captureSelection, scrollToParagraph } from '@/editor/commands'
 import { useProject } from '@/lib/store'
 import { inTextCitation } from '@/lib/apa'
 
@@ -46,6 +46,12 @@ export function useEssayEditor(): Editor | null {
     onSelectionUpdate: ({ editor }) => {
       const found = paragraphAt(editor.state.doc, editor.state.selection.from)
       useProject.getState().setActiveParagraph((found?.node.attrs.id as string) ?? null)
+      const captured = captureSelection(editor)
+      if (captured) {
+        useProject.getState().setHeldSelection(captured)
+      } else if (editor.isFocused) {
+        useProject.getState().clearHeldSelection()
+      }
     },
   })
 
@@ -71,6 +77,7 @@ export function useEssayEditor(): Editor | null {
   const suggestions = useProject((s) => s.suggestions)
   const comments = useProject((s) => s.comments)
   const activeCommentId = useProject((s) => s.activeCommentId)
+  const heldSelection = useProject((s) => s.heldSelection)
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return
@@ -92,9 +99,10 @@ export function useEssayEditor(): Editor | null {
       comments: comments
         .filter((c) => !c.resolved)
         .map((c) => ({ paragraphId: c.paragraphId, quote: c.quote, commentId: c.id, active: c.id === activeCommentId })),
+      held: heldSelection?.quotes ?? [],
     }
     editor.view.dispatch(editor.state.tr.setMeta(DECORATION_META, state).setMeta('addToHistory', false))
-  }, [editor, checkerFlags, checkersEnabled, activeParagraphId, suggestions, comments, activeCommentId])
+  }, [editor, checkerFlags, checkersEnabled, activeParagraphId, suggestions, comments, activeCommentId, heldSelection])
 
   // Keep citation labels current when the student edits author or year.
   const sources = useProject((s) => s.sources)

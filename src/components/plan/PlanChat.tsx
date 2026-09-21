@@ -27,6 +27,9 @@ type Reply = {
 
 const KICKOFF = 'Please help me plan this essay. Ask me what you need to know first.'
 
+export const REDO_PLAN_PROMPT =
+  'The assignment context has changed. Please redo the plan for the updated task, framework, grading scheme, length, style and language. Keep existing section ids wherever the same section still belongs, so written paragraphs stay assigned.'
+
 export function PlanChat() {
   const messages = useProject((s) => s.planChat)
   const setPlanChat = useProject((s) => s.setPlanChat)
@@ -40,6 +43,8 @@ export function PlanChat() {
   const [error, setError] = useState<string | null>(null)
   const [lastPrompt, setLastPrompt] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  const planRequest = useProject((s) => s.planRequest)
+  const clearPlanRequest = useProject((s) => s.clearPlanRequest)
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight })
@@ -77,6 +82,14 @@ export function PlanChat() {
       setBusy(false)
     }
   }
+
+  useEffect(() => {
+    if (!planRequest) return
+    const prompt = planRequest.prompt
+    clearPlanRequest()
+    void send(prompt)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planRequest?.id])
 
   const submit = () => {
     const text = draft.trim()

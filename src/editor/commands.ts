@@ -1,5 +1,7 @@
 import type { Editor } from '@tiptap/core'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
+import { newId } from '@/lib/ids'
 import { findParagraph } from './paragraphIds'
 import { SUGGESTION_TX } from './suggestions'
 
@@ -29,6 +31,94 @@ export function scrollToSection(editor: Editor, sectionId: string): boolean {
   return target ? scrollToParagraph(editor, target) : false
 }
 
+type ParaHit = { node: PMNode; pos: number }
+
+/**
+ * Jump to a plan section to write: focuses an existing paragraph, or inserts
+ * an empty one in the right place when that section has no prose yet.
+ */
+export function startWritingInSection(editor: Editor, sectionId: string, plan: { id: string }[]): boolean {
+  const hit = sectionHits(editor, sectionId, plan)
+  if (hit.firstInSection) {
+    const empty = hit.lastInSection && !hit.lastInSection.node.textContent.trim() ? hit.lastInSection : null
+    const target = empty ?? hit.firstInSection
+    return scrollToParagraph(editor, target.node.attrs.id as string)
+  }
+  if (
+    hit.lastAny &&
+    !hit.lastAny.node.textContent.trim() &&
+    !hit.lastAny.node.attrs.sectionId &&
+    !hit.lastPrior &&
+    !hit.firstLater
+  ) {
+    reassignParagraph(editor, hit.lastAny.node.attrs.id as string, sectionId)
+    return scrollToParagraph(editor, hit.lastAny.node.attrs.id as string)
+  }
+  return insertEmptyParagraph(editor, insertPosForSection(hit), sectionId)
+}
+
+/** Always inserts a new empty paragraph at the end of a plan section. */
+export function addParagraphInSection(editor: Editor, sectionId: string, plan: { id: string }[]): boolean {
+  const hit = sectionHits(editor, sectionId, plan)
+  const pos = hit.lastInSection ? hit.lastInSection.pos + hit.lastInSection.node.nodeSize : insertPosForSection(hit)
+  return insertEmptyParagraph(editor, pos, sectionId)
+}
+
+function sectionHits(editor: Editor, sectionId: string, plan: { id: string }[]): {
+  firstInSection: ParaHit | null
+  lastInSection: ParaHit | null
+  lastPrior: ParaHit | null
+  firstLater: ParaHit | null
+  lastAny: ParaHit | null
+} {
+  const planIndex = plan.findIndex((n) => n.id === sectionId)
+  const prior = new Set(plan.slice(0, Math.max(0, planIndex)).map((n) => n.id))
+  const later = new Set(plan.slice(planIndex + 1).map((n) => n.id))
+  const hit: {
+    firstInSection: ParaHit | null
+    lastInSection: ParaHit | null
+    lastPrior: ParaHit | null
+    firstLater: ParaHit | null
+    lastAny: ParaHit | null
+  } = { firstInSection: null, lastInSection: null, lastPrior: null, firstLater: null, lastAny: null }
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'paragraph') return
+    hit.lastAny = { node, pos }
+    const sid = node.attrs.sectionId as string | null
+    if (sid === sectionId) {
+      if (!hit.firstInSection) hit.firstInSection = { node, pos }
+      hit.lastInSection = { node, pos }
+    } else if (sid && prior.has(sid)) {
+      hit.lastPrior = { node, pos }
+    } else if (!hit.firstLater && sid && later.has(sid)) {
+      hit.firstLater = { node, pos }
+    }
+  })
+  return hit
+}
+
+function insertPosForSection(hit: ReturnType<typeof sectionHits>): number {
+  if (hit.lastPrior) return hit.lastPrior.pos + hit.lastPrior.node.nodeSize
+  if (hit.firstLater) return hit.firstLater.pos
+  if (hit.lastAny) return hit.lastAny.pos + hit.lastAny.node.nodeSize
+  return 0
+}
+
+function insertEmptyParagraph(editor: Editor, pos: number, sectionId: string): boolean {
+  const type = editor.schema.nodes.paragraph
+  if (!type) return false
+  const id = newId('p')
+  const node = type.create({ id, sectionId })
+  const tr = editor.state.tr.insert(pos, node)
+  tr.setSelection(TextSelection.create(tr.doc, pos + 1))
+  tr.setMeta(SUGGESTION_TX, true)
+  editor.view.dispatch(tr)
+  editor.view.focus()
+  const dom = editor.view.nodeDOM(pos) as HTMLElement | null
+  dom?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  return true
+}
+
 /** Moves a paragraph to another plan section. */
 export function reassignParagraph(editor: Editor, paragraphId: string, sectionId: string | null) {
   const found = findParagraph(editor.state.doc, paragraphId)
@@ -53,6 +143,34 @@ export function selectedParagraphIds(editor: Editor): string[] {
     if (node.type.name === 'paragraph' && node.attrs.id) ids.push(node.attrs.id as string)
   })
   return ids
+}
+
+export type CapturedSelection = {
+  text: string
+  paragraphIds: string[]
+  quotes: { paragraphId: string; quote: string }[]
+}
+
+/** Snapshot of a non-empty selection, including per-paragraph quotes for highlighting. */
+export function captureSelection(editor: Editor): CapturedSelection | null {
+  const { from, to } = editor.state.selection
+  if (from === to) return null
+  const leaf = (node: PMNode) => (node.type.name === 'citation' ? (node.attrs.label as string) : '')
+  const text = editor.state.doc.textBetween(from, to, '\n', leaf).trim()
+  if (!text) return null
+  const quotes: { paragraphId: string; quote: string }[] = []
+  const paragraphIds: string[] = []
+  editor.state.doc.nodesBetween(from, to, (node, pos) => {
+    if (node.type.name !== 'paragraph' || !node.attrs.id) return
+    const start = Math.max(from, pos + 1)
+    const end = Math.min(to, pos + node.nodeSize - 1)
+    if (end <= start) return
+    const quote = editor.state.doc.textBetween(start, end, '\n', leaf)
+    if (!quote) return
+    paragraphIds.push(node.attrs.id as string)
+    quotes.push({ paragraphId: node.attrs.id as string, quote })
+  })
+  return { text, paragraphIds, quotes }
 }
 
 /** Last paragraph id of a section, or the last paragraph in the doc. */
