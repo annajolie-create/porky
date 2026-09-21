@@ -2,6 +2,7 @@ import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
+import { isTextBlock } from './paragraphIds'
 
 /**
  * Paragraph-level classes driven by app state: checker results, the active
@@ -53,7 +54,7 @@ export const ParagraphDecorations = Extension.create({
 function build(doc: PMNode, state: ParagraphDecorationState): DecorationSet {
   const decorations: Decoration[] = []
   doc.descendants((node, pos) => {
-    if (node.type.name !== 'paragraph') return
+    if (!isTextBlock(node.type.name)) return
     const id = node.attrs.id as string
     const classes = state.classes[id]
     if (classes?.length) {

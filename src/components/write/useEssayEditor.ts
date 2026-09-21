@@ -120,7 +120,7 @@ export function useEssayEditor(): Editor | null {
 function stripPastedHtml(html: string): string {
   if (typeof window === 'undefined') return html
   const doc = new DOMParser().parseFromString(html, 'text/html')
-  const allowed = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'BLOCKQUOTE'])
+      const allowed = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'SPAN'])
   const walk = (node: Element) => {
     for (const child of Array.from(node.children)) {
       walk(child)

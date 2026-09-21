@@ -6,7 +6,8 @@ import { FilePlus } from '@phosphor-icons/react/dist/csr/FilePlus'
 import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { X } from '@phosphor-icons/react/dist/csr/X'
 import { TabPage } from '../AppShell'
-import { Button, ErrorNote, Field, Input, Select, SectionHeading, Textarea, cx } from '../ui'
+import { Button, ErrorNote, Field, Input, SectionHeading, Textarea, cx } from '../ui'
+import { Dropdown } from '../Menu'
 import { selectContextDrifted, useProject } from '@/lib/store'
 import { LANGUAGES, STYLES } from '@/lib/model'
 import type { EssayStyle } from '@/lib/model'
@@ -74,22 +75,20 @@ export function ContextTab() {
             </div>
           </Field>
           <Field label="Style">
-            <Select value={context.style} onChange={(e) => update({ style: e.target.value as EssayStyle })}>
-              {STYLES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
+            <Dropdown
+              label="Style"
+              value={context.style}
+              onChange={(style) => update({ style: style as EssayStyle })}
+              options={STYLES}
+            />
           </Field>
           <Field label="Language">
-            <Select value={context.language} onChange={(e) => update({ language: e.target.value })}>
-              {LANGUAGES.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </Select>
+            <Dropdown
+              label="Language"
+              value={context.language}
+              onChange={(language) => update({ language })}
+              options={LANGUAGES.map((l) => ({ value: l, label: l }))}
+            />
           </Field>
         </div>
 

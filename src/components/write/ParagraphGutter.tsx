@@ -26,7 +26,7 @@ export function ParagraphGutter({ editor, container }: { editor: Editor; contain
       const root = container.current
       if (!root) return
       const rootRect = root.getBoundingClientRect()
-      const nodes = editor.view.dom.querySelectorAll<HTMLElement>('p[data-pid]')
+      const nodes = editor.view.dom.querySelectorAll<HTMLElement>('[data-pid]')
       const next: Marker[] = []
       nodes.forEach((el) => {
         if (!el.textContent?.trim()) return

@@ -16,7 +16,7 @@ const display = Newsreader({
 })
 
 export const metadata: Metadata = {
-  title: 'essay',
+  title: 'Essai',
   description: 'An AI-native essay editor for students.',
   icons: { icon: '/logo.svg' },
 }

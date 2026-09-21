@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowUp } from '@phosphor-icons/react/dist/csr/ArrowUp'
 import { Check } from '@phosphor-icons/react/dist/csr/Check'
 import { Sparkle } from '@phosphor-icons/react/dist/csr/Sparkle'
+import { SidebarSimple } from '@phosphor-icons/react/dist/csr/SidebarSimple'
 import { Stop } from '@phosphor-icons/react/dist/csr/Stop'
 import { X } from '@phosphor-icons/react/dist/csr/X'
 import { useProject } from '@/lib/store'
@@ -12,6 +13,7 @@ import { paragraphsOf } from '@/lib/doc'
 import { contextPayload, planPayload, sourcesPayload } from '@/lib/payload'
 import { readEvents } from '@/lib/sse'
 import { selectedParagraphIds, selectedText } from '@/editor/commands'
+import { isTextBlock } from '@/editor/paragraphIds'
 import {
   acceptSuggestion,
   applyEditSuggestion,
@@ -48,6 +50,7 @@ export function AgentPanel() {
   const activeParagraphId = useProject((s) => s.activeParagraphId)
   const heldSelection = useProject((s) => s.heldSelection)
   const clearHeldSelection = useProject((s) => s.clearHeldSelection)
+  const setAgentOpen = useProject((s) => s.setAgentOpen)
 
   const [messages, setMessages] = useState<ChatTurn[]>([])
   const [draft, setDraft] = useState('')
@@ -251,7 +254,7 @@ export function AgentPanel() {
     if (!editor || !activeParagraphId) return false
     let section: string | null = null
     editor.state.doc.descendants((node) => {
-      if (node.type.name === 'paragraph' && node.attrs.id === activeParagraphId) {
+      if (isTextBlock(node.type.name) && node.attrs.id === activeParagraphId) {
         section = node.attrs.sectionId as string | null
         return false
       }
@@ -273,11 +276,19 @@ export function AgentPanel() {
         <span className="size-7 rounded-lg bg-gold-soft text-gold grid place-items-center">
           <Sparkle size={14} weight="fill" />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[13.5px] font-semibold leading-none">AI agent</p>
           <p className="text-[12px] text-muted mt-1 truncate">Knows your plan, sources & draft</p>
         </div>
-        {busy && status ? <span className="ml-auto truncate text-[11.5px] text-muted max-w-[40%]">{status}</span> : null}
+        {busy && status ? <span className="truncate text-[11.5px] text-muted max-w-[28%]">{status}</span> : null}
+        <button
+          type="button"
+          onClick={() => setAgentOpen(false)}
+          aria-label="Hide agent"
+          className="p-1.5 rounded-lg text-muted hover:bg-black/5 hover:text-ink"
+        >
+          <SidebarSimple size={16} className="-scale-x-100" />
+        </button>
       </header>
 
       <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
@@ -370,7 +381,7 @@ export function AgentPanel() {
             </button>
           </div>
         ) : null}
-        <div className="flex items-end gap-2 rounded-xl bg-paper px-3 py-2 focus-within:ring-2 focus-within:ring-gold/20">
+        <div className="flex items-end gap-2 rounded-xl bg-paper pl-3.5 pr-1.5 py-1.5 focus-within:ring-2 focus-within:ring-gold/20">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -382,7 +393,7 @@ export function AgentPanel() {
             }}
             rows={Math.min(4, Math.max(1, draft.split('\n').length))}
             placeholder={heldSelection?.text ? 'Ask about the marked text…' : 'Ask the agent, or describe an edit…'}
-            className="flex-1 resize-none bg-transparent text-[13px] outline-none placeholder:text-muted/70"
+            className="flex-1 min-h-8 resize-none bg-transparent py-1.5 text-[13px] leading-5 outline-none placeholder:text-muted/70"
             disabled={busy}
           />
           {busy ? (

@@ -8,7 +8,7 @@ import { X } from '@phosphor-icons/react/dist/csr/X'
 import { ArrowsClockwise } from '@phosphor-icons/react/dist/csr/ArrowsClockwise'
 import { useProject } from '@/lib/store'
 import { acceptSuggestion, rejectSuggestion } from '@/editor/applySuggestion'
-import { findParagraph } from '@/editor/paragraphIds'
+import { findParagraph, isTextBlock } from '@/editor/paragraphIds'
 
 export function SuggestionToolbar({ editor }: { editor: Editor; container: RefObject<HTMLElement | null> }) {
   const suggestions = useProject((s) => s.suggestions)
@@ -28,7 +28,7 @@ export function SuggestionToolbar({ editor }: { editor: Editor; container: RefOb
       if (!id) {
         for (let d = $pos.depth; d > 0; d--) {
           const node = $pos.node(d)
-          if (node.type.name === 'paragraph') {
+          if (isTextBlock(node.type.name)) {
             const match = suggestions.find((s) => s.paragraphId === node.attrs.id)
             if (match) id = match.id
             break

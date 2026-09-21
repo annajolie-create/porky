@@ -1,6 +1,8 @@
 import CharacterCount from '@tiptap/extension-character-count'
+import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
-import Underline from '@tiptap/extension-underline'
+import { TextStyleKit } from '@tiptap/extension-text-style'
+import TextAlign from '@tiptap/extension-text-align'
 import StarterKit from '@tiptap/starter-kit'
 import { Citation } from './citation'
 import { ParagraphDecorations } from './decorations'
@@ -14,17 +16,16 @@ export type EditorOptions = {
 }
 
 /**
- * A deliberately small editor: bold, italic, underline, lists, block quotes,
- * undo/redo. No headings: section structure is invisible by design.
+ * Writing surfaces: headings, fonts, size, color, lists, quotes, undo/redo.
+ * Plan section structure stays in paragraph/heading attrs, not in the outline chrome.
  */
 export function buildExtensions(options: EditorOptions) {
   return [
     StarterKit.configure({
-      heading: false,
+      heading: { levels: [1, 2, 3, 4] },
       codeBlock: false,
       code: false,
       horizontalRule: false,
-      strike: false,
       link: false,
       dropcursor: false,
       gapcursor: false,
@@ -35,7 +36,12 @@ export function buildExtensions(options: EditorOptions) {
       showOnlyCurrent: true,
     }),
     CharacterCount,
-    Underline,
+    TextStyleKit.configure({
+      backgroundColor: false,
+      lineHeight: false,
+    }),
+    Highlight.configure({ multicolor: true }),
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ParagraphIds.configure({ defaultSectionId: options.defaultSectionId }),
     Citation,
     SuggestionInsert,

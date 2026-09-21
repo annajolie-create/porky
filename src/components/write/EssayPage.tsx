@@ -11,6 +11,7 @@ import { CheckerPopover } from './CheckerPopover'
 import { CitationPopover } from './CitationPopover'
 import { SpellPopover } from './SpellPopover'
 import { ReferenceList } from './ReferenceList'
+import { isTextBlock } from '@/editor/paragraphIds'
 
 export function EssayPage({ words, target }: { words?: number; target?: number | null }) {
   const editor = useEssayEditorContext()
@@ -26,7 +27,7 @@ export function EssayPage({ words, target }: { words?: number; target?: number |
     let sectionId: string | null = null
     editor.state.doc.descendants((node) => {
       if (sectionId) return false
-      if (node.type.name === 'paragraph' && node.attrs.id === activeParagraphId) {
+      if (isTextBlock(node.type.name) && node.attrs.id === activeParagraphId) {
         sectionId = node.attrs.sectionId as string | null
         return false
       }

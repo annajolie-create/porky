@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { ArrowDown } from '@phosphor-icons/react/dist/csr/ArrowDown'
 import { ArrowUp } from '@phosphor-icons/react/dist/csr/ArrowUp'
 import { CaretDown } from '@phosphor-icons/react/dist/csr/CaretDown'
-import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { Trash } from '@phosphor-icons/react/dist/csr/Trash'
 import { WarningCircle } from '@phosphor-icons/react/dist/csr/WarningCircle'
 import { X } from '@phosphor-icons/react/dist/csr/X'
-import { Card, Select, cx } from '../ui'
+import { Card, cx } from '../ui'
+import { Dropdown } from '../Menu'
 import { useProject } from '@/lib/store'
 import type { Evidence, PlanNode } from '@/lib/model'
 import { newId } from '@/lib/ids'
@@ -18,7 +18,7 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
   const updateNode = useProject((s) => s.updateNode)
   const removeNode = useProject((s) => s.removeNode)
   const moveNode = useProject((s) => s.moveNode)
-  const addNode = useProject((s) => s.addNode)
+  const essayTarget = useProject((s) => s.context.lengthWords)
   const sources = useProject((s) => s.sources)
   const [open, setOpen] = useState(true)
 
@@ -47,43 +47,17 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
               {node.flags.length} issue{node.flags.length === 1 ? '' : 's'}
             </span>
           ) : null}
-          <div className="inline-flex items-center rounded-full bg-paper h-6 px-2.5">
-            {node.targetWords ? <span className="text-[11.5px] text-muted mr-0.5">~</span> : null}
-            <input
-              type="number"
-              value={node.targetWords ?? ''}
-              onChange={(e) => updateNode(node.id, { targetWords: e.target.value ? Number(e.target.value) : null })}
-              aria-label="Target words"
-              placeholder="words"
-              className="w-[52px] bg-transparent text-[12px] text-muted tabular-nums outline-none"
-            />
-            {node.targetWords ? <span className="text-[11.5px] text-muted">words</span> : null}
-          </div>
+          <WordTarget
+            value={node.targetWords}
+            essayTarget={essayTarget}
+            onChange={(targetWords) => updateNode(node.id, { targetWords })}
+          />
           <div className="flex items-center text-muted">
             <IconButton label="Move up" disabled={index === 0} onClick={() => moveNode(node.id, -1)}>
               <ArrowUp size={14} />
             </IconButton>
             <IconButton label="Move down" disabled={index === total - 1} onClick={() => moveNode(node.id, 1)}>
               <ArrowDown size={14} />
-            </IconButton>
-            <IconButton
-              label="Add section below"
-              onClick={() =>
-                addNode(
-                  {
-                    id: newId('sec'),
-                    title: 'New section',
-                    claim: '',
-                    keyPoints: [],
-                    evidence: [],
-                    targetWords: null,
-                    flags: [],
-                  },
-                  index + 1,
-                )
-              }
-            >
-              <Plus size={14} />
             </IconButton>
             <IconButton label="Delete section" onClick={() => removeNode(node.id)} danger>
               <Trash size={14} />
@@ -135,20 +109,23 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
                       </button>
                     </div>
                     <div className="mt-1.5 flex items-center gap-2">
-                      <Select
+                    <div className="w-auto max-w-[320px]">
+                      <Dropdown
+                        label="Source"
+                        size="sm"
                         value={e.sourceId ?? ''}
-                        onChange={(ev) =>
-                          setEvidence(node.evidence.map((x) => (x.id === e.id ? { ...x, sourceId: ev.target.value || null } : x)))
+                        onChange={(sourceId) =>
+                          setEvidence(node.evidence.map((x) => (x.id === e.id ? { ...x, sourceId: sourceId || null } : x)))
                         }
-                        className="h-7 py-0 text-[12px] w-auto max-w-[320px]"
-                      >
-                        <option value="">No source</option>
-                        {sources.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {inTextCitation(s)} {s.title.slice(0, 50)}
-                          </option>
-                        ))}
-                      </Select>
+                        options={[
+                          { value: '', label: 'No source' },
+                          ...sources.map((s) => ({
+                            value: s.id,
+                            label: `${inTextCitation(s)} ${s.title.slice(0, 50)}`,
+                          })),
+                        ]}
+                      />
+                    </div>
                       {flag ? (
                         <span className="inline-flex items-center gap-1 text-[12px] text-warn">
                           <WarningCircle size={13} weight="fill" />
@@ -182,6 +159,43 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
         </div>
       ) : null}
     </Card>
+  )
+}
+
+function WordTarget({
+  value,
+  essayTarget,
+  onChange,
+}: {
+  value: number | null
+  essayTarget: number | null
+  onChange: (value: number | null) => void
+}) {
+  const share = value && essayTarget ? Math.min(1, value / essayTarget) : 0
+  const over = Boolean(value && essayTarget && value > essayTarget)
+
+  return (
+    <label className="flex flex-col items-end justify-center min-w-[56px] px-1">
+      <input
+        type="number"
+        min={0}
+        step={50}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+        aria-label="Target words for this section"
+        placeholder="—"
+        className="w-[56px] bg-transparent text-right font-serif text-[17px] font-semibold tabular-nums leading-none text-ink outline-none placeholder:text-muted/50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <span className="text-[10.5px] text-muted mt-1 leading-none">words</span>
+      {essayTarget && value ? (
+        <span className="mt-1.5 block h-[2px] w-full rounded-full bg-line overflow-hidden" aria-hidden>
+          <span
+            className={cx('block h-full rounded-full', over ? 'bg-warn' : 'bg-gold')}
+            style={{ width: `${Math.round(share * 100)}%` }}
+          />
+        </span>
+      ) : null}
+    </label>
   )
 }
 

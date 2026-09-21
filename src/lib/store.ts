@@ -81,6 +81,8 @@ export type ProjectState = Project & {
   activeCommentId: string | null
   /** Whether the left sidebar in Write mode is open. */
   sidebarOpen: boolean
+  /** Whether the AI agent column in Write mode is open. */
+  agentOpen: boolean
   /** Sections whose order in the essay differs from the plan. */
   sectionMismatch: { outOfOrder: string[] }
   /** A citation was just inserted; the live checker picks this up. */
@@ -100,6 +102,7 @@ export type ProjectState = Project & {
   acknowledgeContextDrift: () => void
   setActiveComment: (id: string | null) => void
   setSidebarOpen: (open: boolean) => void
+  setAgentOpen: (open: boolean) => void
   setSectionMismatch: (mismatch: { outOfOrder: string[] }) => void
   requestCitationCheck: (sourceId: string) => void
   clearCitationCheck: () => void
@@ -140,6 +143,7 @@ export type ProjectState = Project & {
   setReport: (report: FinalCheckReport | null) => void
   requestAgent: (request: { prompt: string; paragraphId?: string; selection?: string }) => void
   clearAgentRequest: () => void
+  loadProject: (project: Project) => void
   resetProject: () => void
 }
 
@@ -156,6 +160,7 @@ export const useProject = create<ProjectState>()(
       agentRequest: null,
       activeCommentId: null,
       sidebarOpen: true,
+      agentOpen: true,
       sectionMismatch: { outOfOrder: [] },
       citationCheckRequest: null,
       pendingScrollParagraphId: null,
@@ -183,6 +188,7 @@ export const useProject = create<ProjectState>()(
         setState((s) => ({ planContextFingerprint: contextFingerprint(s.context), ...touch() })),
       setActiveComment: (activeCommentId) => setState({ activeCommentId }),
       setSidebarOpen: (sidebarOpen) => setState({ sidebarOpen }),
+      setAgentOpen: (agentOpen) => setState({ agentOpen }),
       setSectionMismatch: (sectionMismatch) => {
         const current = getState().sectionMismatch
         if (current.outOfOrder.join('|') !== sectionMismatch.outOfOrder.join('|')) setState({ sectionMismatch })
@@ -298,10 +304,45 @@ export const useProject = create<ProjectState>()(
 
       setReport: (report) => setState({ report, ...touch() }),
       requestAgent: (request) =>
-        setState({ agentRequest: { id: Math.random().toString(36).slice(2), ...request }, tab: 'write' }),
+        setState({
+          agentRequest: { id: Math.random().toString(36).slice(2), ...request },
+          tab: 'write',
+          agentOpen: true,
+        }),
       clearAgentRequest: () => setState({ agentRequest: null }),
+      loadProject: (project) =>
+        setState({
+          ...defaultProject(),
+          ...project,
+          tab: 'write',
+          hydrated: true,
+          activeParagraphId: null,
+          planVersion: getState().planVersion + 1,
+          agentRequest: null,
+          activeCommentId: null,
+          sidebarOpen: true,
+          agentOpen: true,
+          sectionMismatch: { outOfOrder: [] },
+          citationCheckRequest: null,
+          pendingScrollParagraphId: null,
+          heldSelection: null,
+          planRequest: null,
+        }),
       resetProject: () =>
-        setState({ ...defaultProject(), tab: 'write', planVersion: 0, heldSelection: null, planRequest: null }),
+        setState({
+          ...defaultProject(),
+          tab: 'write',
+          hydrated: true,
+          activeParagraphId: null,
+          planVersion: getState().planVersion + 1,
+          agentRequest: null,
+          activeCommentId: null,
+          heldSelection: null,
+          planRequest: null,
+          sectionMismatch: { outOfOrder: [] },
+          citationCheckRequest: null,
+          pendingScrollParagraphId: null,
+        }),
     }),
     {
       name: 'porky-essay-v1',
@@ -314,7 +355,9 @@ export const useProject = create<ProjectState>()(
         return {
           ...current,
           ...savedRest,
+          id: saved.id || current.id,
           tab: 'write',
+          hydrated: true,
           context: { ...current.context, ...(saved.context ?? {}) },
           plan: saved.plan ?? current.plan,
           sources: saved.sources ?? current.sources,
@@ -363,7 +406,7 @@ export const useProject = create<ProjectState>()(
         >
       },
       onRehydrateStorage: () => (_state, error) => {
-        if (error) console.warn('essay could not restore the last session.', error)
+        if (error) console.warn('Essai could not restore the last session.', error)
         finishHydration()
       },
     },

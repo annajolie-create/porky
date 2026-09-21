@@ -1,4 +1,4 @@
-import { MODELS, chatJSON, jsonError } from '@/server/openrouter'
+import { chatJSON, jsonError, routeModel } from '@/server/openrouter'
 import type { ChatMessage } from '@/server/openrouter'
 import { PROMPTS, contextBlock, planBlock, sourcesBlock } from '@/server/prompts'
 import type { ContextInput, PlanInput, SourceInput } from '@/server/prompts'
@@ -93,10 +93,8 @@ export async function POST(request: Request) {
       '- type "plan": you are proposing or revising the full plan; plan holds every section; questions is null.',
       '- type "reply": a short answer that changes nothing; plan and questions are null.',
       hasPlan
-        ? 'A plan already exists. If the student asks for changes, return the full revised plan with type "plan", keeping ids of sections you retain.'
-        : history.filter((m) => m.role === 'user').length <= 1
-          ? 'This is the first turn: ask your clarifying questions now (type "questions"). Do not propose the plan yet.'
-          : 'The student has answered your questions. Propose the full plan now (type "plan").',
+        ? 'A plan already exists. If the student asks to change the structure, return the full revised plan with type "plan", keeping ids of sections you retain. If they only want advice, use type "reply".'
+        : 'No plan exists yet. If they ask you to create one, you may ask a couple of clarifying questions (type "questions") or propose the plan (type "plan") if you already have enough from the task. If they are just talking, use type "reply".',
       '',
       contextBlock(body.context),
       body.referenceNotes ? `<reference_pieces_note>${body.referenceNotes}</reference_pieces_note>` : '',
@@ -111,8 +109,11 @@ export async function POST(request: Request) {
       ...history.map((m) => ({ role: m.role, content: m.content }) as ChatMessage),
     ]
 
+    const lastUser = [...history].reverse().find((m) => m.role === 'user')?.content ?? ''
+    const model = await routeModel('plan', lastUser, request.signal)
+
     const reply = await chatJSON<PlanReply>({
-      model: MODELS.strong,
+      model,
       messages,
       jsonSchema: { name: 'plan_reply', schema },
       maxTokens: 6000,

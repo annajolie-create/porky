@@ -6,6 +6,7 @@ import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { useProject } from '@/lib/store'
 import { paragraphsOf } from '@/lib/doc'
 import { addParagraphInSection, startWritingInSection } from '@/editor/commands'
+import { isTextBlock } from '@/editor/paragraphIds'
 import { useEssayEditorContext } from './EditorContext'
 import { cx } from '../ui'
 
@@ -27,7 +28,7 @@ export function MiniOutline() {
     let found: string | null = null
     editor.state.doc.descendants((node) => {
       if (found) return false
-      if (node.type.name === 'paragraph' && node.attrs.id === activeParagraphId) {
+      if (isTextBlock(node.type.name) && node.attrs.id === activeParagraphId) {
         found = node.attrs.sectionId as string | null
         return false
       }

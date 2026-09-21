@@ -35,8 +35,9 @@ function collectCitations(node: JSONContent, out: string[]) {
 /** Every paragraph in document order, including those nested in lists and quotes. */
 export function paragraphsOf(doc: JSONContent, sources: Source[]): ParagraphView[] {
   const out: ParagraphView[] = []
-  const walk = (node: JSONContent) => {
-    if (node.type === 'paragraph') {
+  const walk = (node: JSONContent | undefined) => {
+    if (!node) return
+    if (node.type === 'paragraph' || node.type === 'heading') {
       const citations: string[] = []
       collectCitations(node, citations)
       out.push({

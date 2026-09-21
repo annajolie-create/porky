@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/core'
+import { newId } from './ids'
 
 /**
  * The single data model. Every tab, the agent, the checkers and the export
@@ -145,6 +146,7 @@ export type FinalCheckReport = {
 export type Tab = 'context' | 'sources' | 'plan' | 'write'
 
 export type Project = {
+  id: string
   title: string
   context: Context
   sources: Source[]
@@ -190,6 +192,7 @@ export function emptyDoc(): JSONContent {
 
 export function defaultProject(): Project {
   return {
+    id: newId('doc'),
     title: '',
     context: {
       task: '',

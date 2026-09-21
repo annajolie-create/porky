@@ -104,7 +104,7 @@ async function extractPdf(buffer: Uint8Array): Promise<{ text: string; pages: nu
 async function extractLink(url: string): Promise<{ text: string; title: string }> {
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; EssayEditor/0.1; +https://essay.local)',
+      'User-Agent': 'Mozilla/5.0 (compatible; EssaiEditor/0.1; +https://essai.local)',
       Accept: 'text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8',
     },
     redirect: 'follow',

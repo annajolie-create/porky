@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { ShieldCheck } from '@phosphor-icons/react/dist/csr/ShieldCheck'
 import { Sparkle } from '@phosphor-icons/react/dist/csr/Sparkle'
-import { Button, EmptyState, ErrorNote, Pill, SectionHeading } from '../ui'
+import { Button, EmptyState, ErrorNote, Pill, SectionHeading, cx } from '../ui'
 import { selectContextDrifted, useProject } from '@/lib/store'
 import { newId } from '@/lib/ids'
 import type { PlanFlag, PlanNode } from '@/lib/model'
@@ -20,7 +20,6 @@ type CheckResult = {
 
 export function PlanTab() {
   const plan = useProject((s) => s.plan)
-  const planStatus = useProject((s) => s.planStatus)
   const sources = useProject((s) => s.sources)
   const context = useProject((s) => s.context)
   const addNode = useProject((s) => s.addNode)
@@ -34,16 +33,19 @@ export function PlanTab() {
 
   const totalTarget = plan.reduce((sum, n) => sum + (n.targetWords ?? 0), 0)
 
-  const addSection = () => {
-    addNode({
-      id: newId('sec'),
-      title: 'New section',
-      claim: '',
-      keyPoints: [],
-      evidence: [],
-      targetWords: null,
-      flags: [],
-    })
+  const addSection = (index?: number) => {
+    addNode(
+      {
+        id: newId('sec'),
+        title: 'New section',
+        claim: '',
+        keyPoints: [],
+        evidence: [],
+        targetWords: null,
+        flags: [],
+      },
+      index,
+    )
   }
 
   const checkPlan = async () => {
@@ -141,41 +143,37 @@ export function PlanTab() {
         <div className="min-w-0 min-h-0 overflow-y-auto pr-1">
           {plan.length ? (
             <>
-              <div className="flex flex-wrap items-center gap-2 mb-4 text-[12.5px] text-muted">
-                <span>
-                  {plan.length} sections · target {totalTarget.toLocaleString()} words
-                  {context.lengthWords ? ` of ${context.lengthWords.toLocaleString()}` : ''}
-                </span>
-                {taskVerdict !== null ? (
-                  <Pill tone={taskVerdict >= 0.6 ? 'ok' : taskVerdict >= 0.4 ? 'warn' : 'bad'}>
-                    {taskVerdict >= 0.6 ? 'Answers the task' : taskVerdict >= 0.4 ? 'Partly answers the task' : 'Does not answer the task'}
-                  </Pill>
-                ) : null}
-                {flagCount ? <Pill tone="warn">{flagCount} evidence flag{flagCount === 1 ? '' : 's'}</Pill> : null}
+              <div className="flex items-end justify-between gap-4 mb-3">
+                <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted min-w-0">
+                  <span>
+                    {plan.length} section{plan.length === 1 ? '' : 's'}
+                  </span>
+                  {taskVerdict !== null ? (
+                    <Pill tone={taskVerdict >= 0.6 ? 'ok' : taskVerdict >= 0.4 ? 'warn' : 'bad'}>
+                      {taskVerdict >= 0.6 ? 'Answers the task' : taskVerdict >= 0.4 ? 'Partly answers the task' : 'Does not answer the task'}
+                    </Pill>
+                  ) : null}
+                  {flagCount ? <Pill tone="warn">{flagCount} evidence flag{flagCount === 1 ? '' : 's'}</Pill> : null}
+                </div>
+                <WordBudget allocated={totalTarget} essayTarget={context.lengthWords} />
               </div>
               {checkError ? <div className="mb-4"><ErrorNote message={checkError} onRetry={checkPlan} /></div> : null}
-              <ol className="space-y-3">
+              <div>
+                <AddSectionBar onAdd={() => addSection(0)} label="Add section above" />
                 {plan.map((node, index) => (
-                  <li key={node.id}>
+                  <div key={node.id}>
                     <PlanCard node={node} index={index} total={plan.length} />
-                  </li>
+                    <AddSectionBar onAdd={() => addSection(index + 1)} label="Add section below" />
+                  </div>
                 ))}
-              </ol>
-              <Button variant="ghost" className="mt-3" onClick={addSection}>
-                <Plus size={14} weight="bold" />
-                Add section
-              </Button>
+              </div>
             </>
           ) : (
             <EmptyState
-              title={planStatus === 'asking' ? 'Answer the questions on the right' : 'No plan yet'}
-              body={
-                planStatus === 'asking'
-                  ? 'The AI needs a few answers before it proposes a structure.'
-                  : 'Create the plan with the AI from your task and sources, or build it by hand section by section.'
-              }
+              title="No plan yet"
+              body="Ask the assistant on the right to propose one, or add a section by hand."
               action={
-                <Button variant="ghost" onClick={addSection}>
+                <Button variant="ghost" onClick={() => addSection()}>
                   <Plus size={14} weight="bold" />
                   Add a section by hand
                 </Button>
@@ -188,6 +186,51 @@ export function PlanTab() {
           <PlanChat />
         </div>
       </div>
+    </div>
+  )
+}
+
+function AddSectionBar({ onAdd, label }: { onAdd: () => void; label: string }) {
+  return (
+    <div className="group relative flex items-center h-8">
+      <div className="absolute inset-x-8 h-px bg-line group-hover:bg-line-strong" />
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        onClick={onAdd}
+        className="relative z-[1] mx-auto size-6 grid place-items-center rounded-full border border-line bg-paper text-muted hover:border-gold hover:text-gold-ink hover:bg-gold-soft active:scale-[0.97]"
+      >
+        <Plus size={12} weight="bold" />
+      </button>
+    </div>
+  )
+}
+
+function WordBudget({ allocated, essayTarget }: { allocated: number; essayTarget: number | null }) {
+  const over = Boolean(essayTarget && allocated > essayTarget)
+  const share = essayTarget ? Math.min(1, allocated / essayTarget) : 0
+
+  return (
+    <div className="shrink-0 w-[148px] text-right">
+      <div className="flex items-baseline justify-end gap-1.5">
+        <span className="font-serif text-[18px] font-semibold tabular-nums leading-none text-ink">
+          {allocated.toLocaleString()}
+        </span>
+        {essayTarget ? (
+          <span className="text-[12px] text-muted tabular-nums">/ {essayTarget.toLocaleString()}</span>
+        ) : (
+          <span className="text-[12px] text-muted">words</span>
+        )}
+      </div>
+      {essayTarget ? (
+        <div className="mt-1.5 h-[3px] rounded-full bg-line overflow-hidden">
+          <div
+            className={cx('h-full rounded-full', over ? 'bg-warn' : 'bg-gold')}
+            style={{ width: `${Math.round(share * 100)}%` }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

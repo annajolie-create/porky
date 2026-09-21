@@ -88,6 +88,40 @@ textarea {
   position: relative;
 }
 
+.essay h1,
+.essay h2,
+.essay h3,
+.essay h4 {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  position: relative;
+}
+
+.essay h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 0 0 0.7em;
+}
+
+.essay h2 {
+  font-size: 24px;
+  line-height: 1.25;
+  margin: 1.1em 0 0.55em;
+}
+
+.essay h3 {
+  font-size: 20px;
+  line-height: 1.3;
+  margin: 1em 0 0.45em;
+}
+
+.essay h4 {
+  font-size: 17px;
+  line-height: 1.4;
+  margin: 0.9em 0 0.4em;
+}
+
 .essay p.is-empty:first-child::before,
 .essay p.is-editor-empty::before {
   content: attr(data-placeholder);
@@ -122,8 +156,10 @@ textarea {
   margin-bottom: 0.3em;
 }
 
-.essay strong {
-  font-weight: 650;
+.essay mark {
+  border-radius: 2px;
+  padding: 0 1px;
+  color: inherit;
 }
 
 .essay a {
@@ -168,13 +204,13 @@ textarea {
   border-radius: 2px;
 }
 
-.essay p[data-locked='true'] {
+.essay [data-locked='true'] {
   cursor: default;
 }
 
 /* ------------------------------------------------------------ checkers */
 
-.essay p.ck-rambling {
+.essay .ck-rambling {
   text-decoration: underline;
   text-decoration-style: dotted;
   text-decoration-color: var(--color-warn);
@@ -253,6 +289,29 @@ textarea {
   animation: fade-in 160ms ease-out;
 }
 
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.menu-in {
+  animation: menu-in 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transform-origin: var(--menu-origin, 12px 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-in,
+  .fade-in {
+    animation: none;
+  }
+}
+
 @keyframes pulse-dot {
   0%,
   100% {
@@ -265,6 +324,23 @@ textarea {
 
 .pulse-dot {
   animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.loading-dot {
+  animation: loading-dot 1s ease-in-out infinite;
 }
 
 /* ------------------------------------------------------------ print */

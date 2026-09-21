@@ -1,18 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import { Books } from '@phosphor-icons/react/dist/csr/Books'
 import { FileText } from '@phosphor-icons/react/dist/csr/FileText'
 import { ListDashes } from '@phosphor-icons/react/dist/csr/ListDashes'
+import { Note } from '@phosphor-icons/react/dist/csr/Note'
 import { PencilSimple } from '@phosphor-icons/react/dist/csr/PencilSimple'
-import { rehydrateProject, useProject } from '@/lib/store'
+import { isBlankProject, loadDoc, projectSnapshot, takeCreateDocRequest, takeOpenDocRequest, upsertDoc } from '@/lib/documents'
+import { useProject } from '@/lib/store'
 import type { Tab } from '@/lib/model'
-import { cx } from './ui'
+import { Button, cx } from './ui'
 import { ContextTab } from './context/ContextTab'
 import { SourcesTab } from './sources/SourcesTab'
 import { PlanTab } from './plan/PlanTab'
 import { WriteTab } from './write/WriteTab'
+import { OpeningScreen } from './OpeningScreen'
+import { useHydration } from './useHydration'
 
 const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: 'sources', label: 'Sources', icon: Books },
@@ -20,29 +24,53 @@ const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: 'write', label: 'Write', icon: PencilSimple },
 ]
 
+const DOC_MENUS = ['File', 'Extensions', 'Help', 'Insert'] as const
+
 export function AppShell() {
-  const hydrated = useProject((s) => s.hydrated)
+  const hydrated = useHydration()
   const tab = useProject((s) => s.tab)
   const setTab = useProject((s) => s.setTab)
   const title = useProject((s) => s.title)
   const setTitle = useProject((s) => s.setTitle)
   const [health, setHealth] = useState<{ hasKey: boolean } | null>(null)
+  const [docReady, setDocReady] = useState(false)
 
   useEffect(() => {
+    if (!hydrated) return
     let cancelled = false
-    const stop = useProject.persist.onFinishHydration(() => {
-      if (!cancelled) useProject.setState({ hydrated: true })
-    })
-    void rehydrateProject().catch(() => {
-      if (!cancelled) useProject.setState({ hydrated: true })
-    })
-    const timeout = window.setTimeout(() => {
-      if (!useProject.getState().hydrated) useProject.setState({ hydrated: true })
-    }, 2000)
+    const apply = async () => {
+      try {
+        const createTitle = takeCreateDocRequest()
+        if (createTitle != null) {
+          useProject.getState().resetProject()
+          useProject.getState().setTitle(createTitle)
+        } else {
+          const pendingId = takeOpenDocRequest()
+          if (pendingId && pendingId !== useProject.getState().id) {
+            const loaded = await loadDoc(pendingId)
+            if (!cancelled && loaded) useProject.getState().loadProject(loaded)
+          }
+        }
+      } catch {
+        // Open the working copy even if a snapshot cannot be read.
+      } finally {
+        if (!cancelled) setDocReady(true)
+      }
+    }
+    void apply()
+    const fallback = window.setTimeout(() => {
+      if (!cancelled) setDocReady(true)
+    }, 800)
     return () => {
       cancelled = true
-      stop()
-      window.clearTimeout(timeout)
+      window.clearTimeout(fallback)
+    }
+  }, [hydrated])
+
+  useEffect(() => {
+    return () => {
+      const current = projectSnapshot(useProject.getState())
+      if (!isBlankProject(current)) void upsertDoc(current)
     }
   }, [])
 
@@ -67,68 +95,65 @@ export function AppShell() {
     }
   }, [])
 
-  if (!hydrated) {
-    return (
-      <div className="h-full grid place-items-center text-muted text-[13px]">Opening your project</div>
-    )
+  if (!hydrated || !docReady) {
+    return <OpeningScreen label="Opening your project" />
   }
 
   return (
     <div className="h-full flex flex-col">
-      <header className="no-print shrink-0 h-16 bg-surface border-b border-line flex items-center px-7 gap-6">
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setTab('write')}
-            className="flex items-center gap-2.5 select-none"
-            aria-label="essay"
-          >
-            <img src="/logo.svg" alt="" width={26} height={26} className="size-[26px]" />
-            <span className="text-[17px] font-semibold tracking-[-0.03em] leading-none">essay</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('context')}
-            aria-current={tab === 'context' ? 'page' : undefined}
-            className={cx(
-              'h-8 px-2.5 rounded-lg text-[12.5px] font-medium inline-flex items-center gap-1.5 transition-colors',
-              tab === 'context' ? 'bg-[#f6f3ea] text-ink' : 'text-muted hover:text-ink-soft hover:bg-black/5',
-            )}
-          >
-            <FileText size={14} weight={tab === 'context' ? 'fill' : 'regular'} />
-            Context
-          </button>
-        </div>
+      <header className="no-print shrink-0 bg-surface border-b border-line">
+        <div className="flex items-center gap-3 px-5 py-2.5">
+          <Link href="/" className="shrink-0" aria-label="Workplace">
+            <img src="/logo.svg" alt="" width={32} height={32} className="size-8" />
+          </Link>
 
-        {tab === 'write' ? (
-          <div id="header-center" className="flex-1 min-w-0 flex justify-center" />
-        ) : (
-          <div className="flex-1 min-w-0 flex justify-center">
+          <div className="min-w-0 flex-1">
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Untitled essay"
-              aria-label="Essay title"
-              className="w-full max-w-[420px] text-center text-[13px] text-muted bg-transparent outline-none truncate placeholder:text-muted/70"
+              placeholder="Untitled"
+              aria-label="File name"
+              className="w-full max-w-[420px] bg-transparent text-[15px] font-semibold tracking-[-0.02em] leading-tight outline-none truncate placeholder:text-muted"
             />
+            <div className="flex items-center gap-0.5 mt-0.5 -ml-1.5 flex-wrap">
+              {DOC_MENUS.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="h-6 px-1.5 rounded text-[12.5px] font-medium text-muted hover:text-ink hover:bg-black/5 transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
 
-        <div className="ml-auto flex items-center gap-3 shrink-0">
-          {health && !health.hasKey ? (
-            <span className="text-[12px] text-warn max-w-[220px] truncate">No OpenRouter key</span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-[12.5px] text-muted">
-              <span className="size-[7px] rounded-full bg-ok" />
-              Auto-saved
+          <div className="ml-auto flex items-center gap-3 shrink-0">
+            <Button
+              size="sm"
+              variant={tab === 'context' ? 'soft' : 'secondary'}
+              onClick={() => setTab('context')}
+              aria-current={tab === 'context' ? 'page' : undefined}
+              className="h-8 px-3"
+            >
+              <Note size={14} weight={tab === 'context' ? 'fill' : 'regular'} />
+              Context
+            </Button>
+            {health && !health.hasKey ? (
+              <span className="text-[12px] text-warn max-w-[220px] truncate">No OpenRouter key</span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-[12.5px] text-muted">
+                <span className="size-[7px] rounded-full bg-ok" />
+                Auto-saved
+              </span>
+            )}
+            <span
+              className="size-8 rounded-full bg-paper border border-line grid place-items-center text-[12px] font-semibold text-ink-soft"
+              aria-hidden
+            >
+              A
             </span>
-          )}
-          <span
-            className="size-8 rounded-full bg-paper border border-line grid place-items-center text-[12px] font-semibold text-ink-soft"
-            aria-hidden
-          >
-            A
-          </span>
+          </div>
         </div>
       </header>
 
@@ -179,15 +204,6 @@ function ViewDock({
       </div>
     </nav>
   )
-}
-
-export function HeaderPortal({ children }: { children: React.ReactNode }) {
-  const [target, setTarget] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    setTarget(document.getElementById('header-center'))
-  }, [])
-  if (!target) return null
-  return createPortal(children, target)
 }
 
 /** Full-screen tab wrapper with a centred column. */

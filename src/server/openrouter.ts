@@ -36,8 +36,8 @@ function headers() {
   return {
     Authorization: `Bearer ${apiKey()}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': 'https://essay.local',
-    'X-Title': 'essay',
+    'HTTP-Referer': 'https://essai.local',
+    'X-Title': 'Essai',
   }
 }
 
@@ -281,6 +281,7 @@ export async function decide(
   state: unknown,
   questions: Record<string, Question>,
   signal?: AbortSignal,
+  options?: { fallback?: boolean },
 ): Promise<DecideResult> {
   try {
     const response = await fetch(`${BASE}/alpha/decisions`, {
@@ -297,8 +298,48 @@ export async function decide(
   } catch (error) {
     if (error instanceof AIError && (error.status === 401 || error.status === 402)) throw error
     if ((error as Error)?.name === 'AbortError') throw error
+    if (options?.fallback === false) throw error
     return { answers: await decideWithLLM(state, questions, signal), engine: 'llm' }
   }
+}
+
+const ROUTE_CONFIDENCE = 0.55
+
+/**
+ * Jev picks cheap vs strong for a generation request. Unsure or unreachable
+ * always falls through to strong so routing never silently downgrades a draft.
+ */
+export async function routeModel(
+  kind: 'agent' | 'plan',
+  prompt: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  try {
+    const { answers } = await decide(
+      { kind, prompt: prompt.trim().slice(0, 1500) },
+      {
+        tier: {
+          type: 'choice',
+          instructions: 'Which model tier should handle this student writing request?',
+          criteria: {
+            cheap:
+              'A fast cheap model is enough: tidy prose, shorten, rename, extract, summarise, or answer a narrow factual question.',
+            strong:
+              'Needs a strong model: plan or argue, draft a section, synthesise sources, keep academic voice, or handle an ambiguous request.',
+          },
+        },
+      },
+      signal,
+      { fallback: false },
+    )
+    const answer = answers.tier
+    if (answer?.type === 'choice' && answer.choice === 'cheap' && answer.confidence >= ROUTE_CONFIDENCE) {
+      return MODELS.cheap
+    }
+  } catch (error) {
+    if ((error as Error)?.name === 'AbortError') throw error
+  }
+  return MODELS.strong
 }
 
 function normaliseJev(data: Record<string, unknown>, questions: Record<string, Question>): Record<string, Answer> | null {

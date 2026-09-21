@@ -1,4 +1,4 @@
-# essay
+# Essai
 
 An AI-native essay editor for students: define the task, collect sources, co-plan the argument, then write with an agent that knows the plan, the sources and the document.
 
@@ -32,7 +32,7 @@ MODEL_CHEAP=google/gemini-3.5-flash-lite
 MODEL_JEV=~typesafe/jev-latest
 ```
 
-Judgments (plan fit, rambling, citation fit, plan evidence) use Jev via OpenRouter’s Decisions API, with a cheap LLM fallback.
+Judgments (plan fit, rambling, citation fit, plan evidence) use Jev via OpenRouter’s Decisions API, with a cheap LLM fallback. Jev also routes the agent and plan chat to the cheap or strong model; if it is unsure, the strong model runs.
 
 ## Deploy
 

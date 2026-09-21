@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { MODELS, chatStream, type ChatMessage, type ToolCall, type ToolDefinition } from './openrouter'
+import { chatStream, routeModel, type ChatMessage, type ToolCall, type ToolDefinition } from './openrouter'
 import { PROMPTS, contextBlock, planBlock, sourcesBlock } from './prompts'
 import type { ContextInput, PlanInput, SourceInput } from './prompts'
 
@@ -228,13 +228,16 @@ export async function runAgent(
 
   emit('status', { text: 'Thinking' })
 
+  const lastUser = [...body.messages].reverse().find((m) => m.role === 'user')?.content ?? ''
+  const model = await routeModel('agent', lastUser, signal)
+
   for (let round = 0; round < 8; round++) {
     if (signal.aborted) return
     let toolCalls: ToolCall[] = []
     let text = ''
 
     for await (const event of chatStream({
-      model: MODELS.strong,
+      model,
       messages,
       tools: AGENT_TOOLS,
       maxTokens: 4000,

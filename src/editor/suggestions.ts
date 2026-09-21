@@ -2,6 +2,7 @@ import { Extension, Mark, mergeAttributes } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
+import { isTextBlock } from './paragraphIds'
 
 /**
  * Agent edits appear as tracked changes: red strikethrough for deletions,
@@ -112,7 +113,7 @@ function touchesLocked(doc: PMNode, from: number, to: number, locked: Set<string
   const end = Math.max(start, Math.min(to, size))
   doc.nodesBetween(start, end, (node) => {
     if (hit) return false
-    if (node.type.name === 'paragraph' && locked.has(node.attrs.id as string)) {
+    if (isTextBlock(node.type.name) && locked.has(node.attrs.id as string)) {
       hit = true
       return false
     }
@@ -124,7 +125,7 @@ function touchesLocked(doc: PMNode, from: number, to: number, locked: Set<string
     const $pos = doc.resolve(start)
     for (let depth = $pos.depth; depth > 0; depth--) {
       const node = $pos.node(depth)
-      if (node.type.name === 'paragraph' && locked.has(node.attrs.id as string)) {
+      if (isTextBlock(node.type.name) && locked.has(node.attrs.id as string)) {
         hit = true
         break
       }

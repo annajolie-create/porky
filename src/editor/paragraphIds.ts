@@ -19,6 +19,11 @@ export type ParagraphIdsOptions = {
   defaultSectionId: () => string | null
 }
 
+/** Paragraphs and headings share ids so the outline, checkers and agent still address them. */
+export function isTextBlock(name: string | undefined | null): boolean {
+  return name === 'paragraph' || name === 'heading'
+}
+
 export const paragraphIdsKey = new PluginKey('paragraphIds')
 
 export const ParagraphIds = Extension.create<ParagraphIdsOptions>({
@@ -31,7 +36,7 @@ export const ParagraphIds = Extension.create<ParagraphIdsOptions>({
   addGlobalAttributes() {
     return [
       {
-        types: ['paragraph'],
+        types: ['paragraph', 'heading'],
         attributes: {
           id: {
             default: null,
@@ -68,7 +73,7 @@ function assignIds(tr: Transaction, doc: PMNode, fallbackSection: string | null)
   let changed = false
 
   doc.descendants((node, pos) => {
-    if (node.type.name !== 'paragraph') return
+    if (!isTextBlock(node.type.name)) return
     let id = node.attrs.id as string | null
     let sectionId = node.attrs.sectionId as string | null
     const attrs: Record<string, unknown> = {}
@@ -99,7 +104,7 @@ export function paragraphAt(doc: PMNode, pos: number): { node: PMNode; pos: numb
   const $pos = doc.resolve(Math.min(pos, doc.content.size))
   for (let depth = $pos.depth; depth >= 0; depth--) {
     const node = $pos.node(depth)
-    if (node.type.name === 'paragraph') return { node, pos: depth === 0 ? 0 : $pos.before(depth) }
+    if (isTextBlock(node.type.name)) return { node, pos: depth === 0 ? 0 : $pos.before(depth) }
   }
   return null
 }
@@ -109,7 +114,7 @@ export function findParagraph(doc: PMNode, id: string): { node: PMNode; pos: num
   let found: { node: PMNode; pos: number } | null = null
   doc.descendants((node, pos) => {
     if (found) return false
-    if (node.type.name === 'paragraph' && node.attrs.id === id) {
+    if (isTextBlock(node.type.name) && node.attrs.id === id) {
       found = { node, pos }
       return false
     }

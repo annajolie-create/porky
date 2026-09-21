@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { newId } from '@/lib/ids'
-import { findParagraph, paragraphAt } from './paragraphIds'
+import { findParagraph, isTextBlock, paragraphAt } from './paragraphIds'
 import { SUGGESTION_TX } from './suggestions'
 
 /** Scrolls to and places the caret at the start of a paragraph. */
@@ -22,7 +22,7 @@ export function scrollToSection(editor: Editor, sectionId: string): boolean {
   let target: string | null = null
   editor.state.doc.descendants((node) => {
     if (target) return false
-    if (node.type.name === 'paragraph' && node.attrs.sectionId === sectionId && node.textContent.trim()) {
+    if (isTextBlock(node.type.name) && node.attrs.sectionId === sectionId && node.textContent.trim()) {
       target = node.attrs.id as string
       return false
     }
@@ -82,7 +82,7 @@ function sectionHits(editor: Editor, sectionId: string, plan: { id: string }[]):
     lastAny: ParaHit | null
   } = { firstInSection: null, lastInSection: null, lastPrior: null, firstLater: null, lastAny: null }
   editor.state.doc.descendants((node, pos) => {
-    if (node.type.name !== 'paragraph') return
+    if (!isTextBlock(node.type.name)) return
     hit.lastAny = { node, pos }
     const sid = node.attrs.sectionId as string | null
     if (sid === sectionId) {
@@ -140,7 +140,7 @@ export function selectedParagraphIds(editor: Editor): string[] {
   const { from, to } = editor.state.selection
   const ids: string[] = []
   editor.state.doc.nodesBetween(from, to, (node) => {
-    if (node.type.name === 'paragraph' && node.attrs.id) ids.push(node.attrs.id as string)
+    if (isTextBlock(node.type.name) && node.attrs.id) ids.push(node.attrs.id as string)
   })
   return ids
 }
@@ -161,7 +161,7 @@ export function captureSelection(editor: Editor): CapturedSelection | null {
   const quotes: { paragraphId: string; quote: string }[] = []
   const paragraphIds: string[] = []
   editor.state.doc.nodesBetween(from, to, (node, pos) => {
-    if (node.type.name !== 'paragraph' || !node.attrs.id) return
+    if (!isTextBlock(node.type.name) || !node.attrs.id) return
     const start = Math.max(from, pos + 1)
     const end = Math.min(to, pos + node.nodeSize - 1)
     if (end <= start) return
@@ -178,7 +178,7 @@ export function lastParagraphOfSection(editor: Editor, sectionId: string | null)
   let last: string | null = null
   let lastAny: string | null = null
   editor.state.doc.descendants((node) => {
-    if (node.type.name !== 'paragraph') return
+    if (!isTextBlock(node.type.name)) return
     lastAny = node.attrs.id as string
     if (sectionId && node.attrs.sectionId === sectionId) last = node.attrs.id as string
   })

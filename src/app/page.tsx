@@ -1,5 +1,5 @@
-import { AppShell } from '@/components/AppShell'
+import { Workplace } from '@/components/workplace/Workplace'
 
 export default function Page() {
-  return <AppShell />
+  return <Workplace />
 }

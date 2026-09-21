@@ -6,7 +6,6 @@ import { ShieldCheck } from '@phosphor-icons/react/dist/csr/ShieldCheck'
 import { SidebarSimple } from '@phosphor-icons/react/dist/csr/SidebarSimple'
 import { useProject } from '@/lib/store'
 import { Button, Switch, cx } from '../ui'
-import { HeaderPortal } from '../AppShell'
 import { EditorContext } from './EditorContext'
 import { useEssayEditor } from './useEssayEditor'
 import { EssayPage } from './EssayPage'
@@ -27,6 +26,8 @@ export function WriteTab() {
   const target = useProject((s) => s.context.lengthWords)
   const sidebarOpen = useProject((s) => s.sidebarOpen)
   const setSidebarOpen = useProject((s) => s.setSidebarOpen)
+  const agentOpen = useProject((s) => s.agentOpen)
+  const setAgentOpen = useProject((s) => s.setAgentOpen)
   const checkersEnabled = useProject((s) => s.checkersEnabled)
   const setCheckersEnabled = useProject((s) => s.setCheckersEnabled)
   const setTab = useProject((s) => s.setTab)
@@ -54,12 +55,8 @@ export function WriteTab() {
 
   return (
     <EditorContext.Provider value={editor}>
-      {editor ? (
-        <HeaderPortal>
-          <Toolbar editor={editor} />
-        </HeaderPortal>
-      ) : null}
       <div className="h-full flex flex-col">
+        {editor ? <Toolbar editor={editor} /> : null}
         <div className="no-print shrink-0 h-11 bg-paper/80 border-b border-line flex items-center gap-3 px-4 text-[12.5px]">
           <button
             type="button"
@@ -93,6 +90,15 @@ export function WriteTab() {
             <Export size={14} weight="bold" />
             Export PDF
           </Button>
+          <button
+            type="button"
+            onClick={() => setAgentOpen(!agentOpen)}
+            aria-label={agentOpen ? 'Hide agent' : 'Show agent'}
+            aria-pressed={agentOpen}
+            className="p-1.5 rounded-lg text-muted hover:bg-black/5 hover:text-ink"
+          >
+            <SidebarSimple size={16} className="-scale-x-100" />
+          </button>
         </div>
 
         <div className="flex-1 min-h-0 flex">
@@ -124,8 +130,16 @@ export function WriteTab() {
             ) : null}
           </div>
 
-          <aside className="no-print w-[320px] shrink-0 border-l border-line bg-surface flex flex-col min-h-0">
-            <AgentPanel />
+          <aside
+            className={cx(
+              'no-print shrink-0 border-l border-line bg-surface flex flex-col min-h-0 transition-[width] duration-200 overflow-hidden',
+              agentOpen ? 'w-[320px]' : 'w-0 border-l-0',
+            )}
+            aria-hidden={!agentOpen}
+          >
+            <div className="h-full w-[320px] flex flex-col min-h-0">
+              <AgentPanel />
+            </div>
           </aside>
         </div>
       </div>
