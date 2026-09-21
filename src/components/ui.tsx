@@ -3,8 +3,8 @@
 import { forwardRef } from 'react'
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 
-export function cx(...parts: (string | false | null | undefined)[]): string {
-  return parts.filter(Boolean).join(' ')
+export function cx(...parts: (string | number | false | null | undefined)[]): string {
+  return parts.filter((p): p is string => typeof p === 'string' && p.length > 0).join(' ')
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

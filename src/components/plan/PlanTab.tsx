@@ -1,12 +1,178 @@
 'use client'
 
+import { useState } from 'react'
+import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
+import { ShieldCheck } from '@phosphor-icons/react/dist/csr/ShieldCheck'
 import { TabPage } from '../AppShell'
-import { SectionHeading } from '../ui'
+import { Button, EmptyState, ErrorNote, Pill, SectionHeading } from '../ui'
+import { useProject } from '@/lib/store'
+import { newId } from '@/lib/ids'
+import type { PlanFlag, PlanNode } from '@/lib/model'
+import { relevantPassages } from '@/lib/passages'
+import { postJSON } from '@/lib/sse'
+import { PlanCard } from './PlanCard'
+import { PlanChat } from './PlanChat'
+
+type CheckResult = {
+  answersTask: { probability: number }
+  evidence: { nodeId: string; evidenceId: string; supported: number }[]
+}
 
 export function PlanTab() {
+  const plan = useProject((s) => s.plan)
+  const planStatus = useProject((s) => s.planStatus)
+  const sources = useProject((s) => s.sources)
+  const context = useProject((s) => s.context)
+  const addNode = useProject((s) => s.addNode)
+  const setNodeFlags = useProject((s) => s.setNodeFlags)
+  const setTab = useProject((s) => s.setTab)
+  const [checking, setChecking] = useState(false)
+  const [checkError, setCheckError] = useState<string | null>(null)
+  const [taskVerdict, setTaskVerdict] = useState<number | null>(null)
+
+  const totalTarget = plan.reduce((sum, n) => sum + (n.targetWords ?? 0), 0)
+
+  const addSection = () => {
+    addNode({
+      id: newId('sec'),
+      title: 'New section',
+      claim: '',
+      keyPoints: [],
+      evidence: [],
+      targetWords: null,
+      flags: [],
+    })
+  }
+
+  const checkPlan = async () => {
+    setChecking(true)
+    setCheckError(null)
+    try {
+      const items = plan.flatMap((node) =>
+        node.evidence
+          .filter((e) => e.sourceId && e.text.trim())
+          .map((e) => {
+            const source = sources.find((s) => s.id === e.sourceId)
+            return {
+              nodeId: node.id,
+              evidenceId: e.id,
+              claim: e.text,
+              sourceTitle: source?.title ?? 'Unknown source',
+              passages: source ? relevantPassages(source.text, e.text, 4) : [],
+            }
+          })
+          .filter((item) => item.passages.length),
+      )
+      const planSummary = plan.map((n, i) => `${i + 1}. ${n.title}: ${n.claim}`).join('\n')
+      const result = await postJSON<CheckResult>('/api/plan/check', { task: context.task, planSummary, items })
+
+      const flags: Record<string, PlanFlag[]> = {}
+      for (const node of plan) flags[node.id] = []
+      for (const ev of result.evidence) {
+        if (ev.supported < 0.45) {
+          const node = plan.find((n) => n.id === ev.nodeId)
+          const evidence = node?.evidence.find((e) => e.id === ev.evidenceId)
+          flags[ev.nodeId]?.push({
+            id: newId('flag'),
+            kind: 'evidence',
+            evidenceId: ev.evidenceId,
+            message: `The linked source does not seem to support: "${evidence?.text.slice(0, 80) ?? ''}"`,
+          })
+        }
+      }
+      for (const node of plan) {
+        for (const e of node.evidence) {
+          if (!e.sourceId && e.text.trim()) {
+            flags[node.id].push({ id: newId('flag'), kind: 'evidence', evidenceId: e.id, message: `No source linked: "${e.text.slice(0, 80)}"` })
+          }
+        }
+      }
+      setNodeFlags(flags)
+      setTaskVerdict(result.answersTask.probability)
+    } catch (e) {
+      setCheckError((e as Error).message)
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  const flagCount = plan.reduce((sum, n) => sum + n.flags.length, 0)
+
   return (
     <TabPage wide>
-      <SectionHeading title="Plan" />
+      <SectionHeading
+        title="Plan"
+        description="The structured argument of your essay. Each section has a claim, key points and evidence linked to your sources. The editor, the agent and the checkers all refer to it."
+        actions={
+          plan.length ? (
+            <>
+              <Button onClick={checkPlan} loading={checking}>
+                <ShieldCheck size={15} weight="bold" />
+                Check plan
+              </Button>
+              <Button variant="primary" onClick={() => setTab('write')}>
+                Start writing
+              </Button>
+            </>
+          ) : null
+        }
+      />
+
+      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-8 items-start">
+        <div className="min-w-0">
+          {plan.length ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2 mb-4 text-[12.5px] text-muted">
+                <span>
+                  {plan.length} sections · target {totalTarget.toLocaleString()} words
+                  {context.lengthWords ? ` of ${context.lengthWords.toLocaleString()}` : ''}
+                </span>
+                {taskVerdict !== null ? (
+                  <Pill tone={taskVerdict >= 0.6 ? 'ok' : taskVerdict >= 0.4 ? 'warn' : 'bad'}>
+                    {taskVerdict >= 0.6 ? 'Answers the task' : taskVerdict >= 0.4 ? 'Partly answers the task' : 'Does not answer the task'}
+                  </Pill>
+                ) : null}
+                {flagCount ? <Pill tone="warn">{flagCount} evidence flag{flagCount === 1 ? '' : 's'}</Pill> : null}
+              </div>
+              {checkError ? <div className="mb-4"><ErrorNote message={checkError} onRetry={checkPlan} /></div> : null}
+              <ol className="space-y-3">
+                {plan.map((node, index) => (
+                  <li key={node.id}>
+                    <PlanCard node={node} index={index} total={plan.length} />
+                  </li>
+                ))}
+              </ol>
+              <Button variant="ghost" className="mt-3" onClick={addSection}>
+                <Plus size={14} weight="bold" />
+                Add section
+              </Button>
+            </>
+          ) : (
+            <EmptyState
+              title={planStatus === 'asking' ? 'Answer the questions on the right' : 'No plan yet'}
+              body={
+                planStatus === 'asking'
+                  ? 'The AI needs a few answers before it proposes a structure.'
+                  : 'Create the plan with the AI from your task and sources, or build it by hand section by section.'
+              }
+              action={
+                planStatus !== 'asking' ? (
+                  <Button variant="ghost" onClick={addSection}>
+                    <Plus size={14} weight="bold" />
+                    Add a section by hand
+                  </Button>
+                ) : null
+              }
+            />
+          )}
+        </div>
+
+        <div className="sticky top-0">
+          <PlanChat />
+        </div>
+      </div>
     </TabPage>
   )
 }
+
+export type { PlanNode }
