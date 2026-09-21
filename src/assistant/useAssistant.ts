@@ -57,6 +57,16 @@ export function useAssistant() {
   const [error, setError] = useState<string | null>(null)
   const abort = useRef<AbortController | null>(null)
 
+  // The ref is the authority, not the state. A setState updater does not run
+  // when it is called - React defers it to the render phase - so reading the
+  // new history out of one would hand the request an empty array.
+  const history = useRef<ChatMessage[]>([])
+
+  const commit = useCallback((next: ChatMessage[]) => {
+    history.current = next
+    setMessages(next)
+  }, [])
+
   const stop = useCallback(() => {
     abort.current?.abort()
     abort.current = null
@@ -68,8 +78,8 @@ export function useAssistant() {
     abort.current = null
     setStreaming(false)
     setError(null)
-    setMessages([])
-  }, [])
+    commit([])
+  }, [commit])
 
   const send = useCallback(
     async (prompt: string, document: DocumentSnapshot) => {
@@ -80,13 +90,8 @@ export function useAssistant() {
       const outgoing: ChatMessage = { id: id(), role: 'user', content: text }
       const replyId = id()
 
-      // Read the history from the updater so a fast second send cannot race
-      // against a stale copy of the array.
-      let history: ChatMessage[] = []
-      setMessages((current) => {
-        history = [...current, outgoing]
-        return [...history, { id: replyId, role: 'assistant', content: '' }]
-      })
+      const turns = [...history.current, outgoing]
+      commit([...turns, { id: replyId, role: 'assistant', content: '' }])
 
       const controller = new AbortController()
       abort.current = controller
@@ -98,7 +103,7 @@ export function useAssistant() {
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
           body: JSON.stringify({
-            messages: history.map(({ role, content }) => ({ role, content })),
+            messages: turns.map(({ role, content }) => ({ role, content })),
             document,
           }),
         })
@@ -114,8 +119,8 @@ export function useAssistant() {
         for await (const { event, data } of readEvents(response.body)) {
           if (event === 'delta') {
             const piece = String(data.text ?? '')
-            setMessages((current) =>
-              current.map((message) =>
+            commit(
+              history.current.map((message) =>
                 message.id === replyId
                   ? { ...message, content: message.content + piece }
                   : message,
@@ -131,8 +136,8 @@ export function useAssistant() {
         } else {
           setError((caught as Error)?.message ?? 'The assistant failed.')
           // Drop an empty bubble rather than leave it hanging.
-          setMessages((current) =>
-            current.filter((message) => !(message.id === replyId && !message.content)),
+          commit(
+            history.current.filter((message) => !(message.id === replyId && !message.content)),
           )
         }
       } finally {
@@ -140,7 +145,7 @@ export function useAssistant() {
         setStreaming(false)
       }
     },
-    [],
+    [commit],
   )
 
   return { messages, streaming, error, send, stop, clear }

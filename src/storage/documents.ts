@@ -128,7 +128,26 @@ export type Bootstrap = {
   body: DocumentBody
 }
 
-export async function bootstrap(): Promise<Bootstrap> {
+let opening: Promise<Bootstrap> | null = null
+
+/**
+ * Shared across concurrent callers. StrictMode mounts effects twice, so two
+ * bootstraps would otherwise run side by side, both find an empty database,
+ * and both create a seed document — leaving a duplicate behind on first load.
+ * The same race would run the legacy migration twice.
+ */
+export function bootstrap(): Promise<Bootstrap> {
+  if (!opening) {
+    opening = openOnce()
+    // A failed open must not be cached, or one transient error is permanent.
+    opening.catch(() => {
+      opening = null
+    })
+  }
+  return opening
+}
+
+async function openOnce(): Promise<Bootstrap> {
   await migrateLegacyDraft()
 
   let metas = await db.listMeta()

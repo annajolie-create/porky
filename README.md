@@ -84,6 +84,11 @@ backend is the fix, not moving the key into the client.
 React 19, Vite and [Tiptap](https://tiptap.dev) on ProseMirror. No backend.
 
 ```bash
-npm run build   # typecheck and bundle
-npm run lint    # oxlint
+npm run build            # typecheck and bundle
+npm run lint             # oxlint
+npm run check            # drive the editor in a headless browser (25 checks)
+npm run check:assistant  # drive the assistant panel (costs API tokens)
 ```
+
+The checks need a browser once: `npx playwright install chromium`. Start
+`npm run dev` first — they drive the real app at localhost:5173.
