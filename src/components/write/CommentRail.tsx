@@ -34,8 +34,8 @@ export function CommentRail() {
               if (editor) scrollToParagraph(editor, comment.paragraphId)
             }}
             className={cx(
-              'rounded-md border bg-surface p-3 shadow-soft cursor-pointer fade-in',
-              active ? 'border-accent' : 'border-line',
+              'rounded-2xl border bg-surface p-3 shadow-soft cursor-pointer fade-in',
+              active ? 'border-gold' : 'border-line',
             )}
           >
             <div className="flex items-center justify-between gap-2 mb-1">

@@ -1,4 +1,4 @@
-# Porky
+# essay
 
 An AI-native essay editor for students: define the task, collect sources, co-plan the argument, then write with an agent that knows the plan, the sources and the document.
 

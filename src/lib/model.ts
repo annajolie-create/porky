@@ -65,10 +65,17 @@ export type PlanNode = {
   flags: PlanFlag[]
 }
 
+export type PlanQuestion = {
+  id: string
+  prompt: string
+  placeholder?: string
+}
+
 export type PlanChatMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
+  questions?: PlanQuestion[]
 }
 
 export type SuggestionKind = 'edit' | 'insert'
@@ -135,7 +142,7 @@ export type FinalCheckReport = {
   grading: { criterion: string; verdict: string }[]
 }
 
-export type Tab = 'context' | 'sources' | 'plan' | 'write' | 'check'
+export type Tab = 'context' | 'sources' | 'plan' | 'write'
 
 export type Project = {
   title: string

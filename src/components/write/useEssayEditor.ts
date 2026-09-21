@@ -34,7 +34,7 @@ export function useEssayEditor(): Editor | null {
     extensions,
     content: initialDoc.current,
     editorProps: {
-      attributes: { class: 'essay', 'aria-label': 'Essay', spellcheck: 'true' },
+      attributes: { class: 'essay', 'aria-label': 'Essay', spellcheck: 'false' },
       transformPastedHTML: (html) => stripPastedHtml(html),
     },
     onUpdate: ({ editor }) => {

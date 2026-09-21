@@ -36,8 +36,8 @@ function headers() {
   return {
     Authorization: `Bearer ${apiKey()}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': 'https://porky.local',
-    'X-Title': 'Porky essay editor',
+    'HTTP-Referer': 'https://essay.local',
+    'X-Title': 'essay',
   }
 }
 

@@ -49,8 +49,8 @@ export function TopicSearch() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') void run()
             }}
-            placeholder="Which source talks about…"
-            className="pl-9"
+            placeholder='Ask which source covers a topic — e.g. "privacy risks of CBDCs"'
+            className="pl-9 h-12 rounded-xl"
           />
         </div>
         <Button onClick={run} loading={busy} disabled={!query.trim()}>

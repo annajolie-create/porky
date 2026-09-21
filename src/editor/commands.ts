@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { newId } from '@/lib/ids'
-import { findParagraph } from './paragraphIds'
+import { findParagraph, paragraphAt } from './paragraphIds'
 import { SUGGESTION_TX } from './suggestions'
 
 /** Scrolls to and places the caret at the start of a paragraph. */
@@ -34,8 +34,9 @@ export function scrollToSection(editor: Editor, sectionId: string): boolean {
 type ParaHit = { node: PMNode; pos: number }
 
 /**
- * Jump to a plan section to write: focuses an existing paragraph, or inserts
- * an empty one in the right place when that section has no prose yet.
+ * Jump to a plan section to write: focuses an existing paragraph, or prepares
+ * an empty one in the right place. Section structure stays off the page —
+ * selecting a section only decides where new writing belongs.
  */
 export function startWritingInSection(editor: Editor, sectionId: string, plan: { id: string }[]): boolean {
   const hit = sectionHits(editor, sectionId, plan)
@@ -44,13 +45,12 @@ export function startWritingInSection(editor: Editor, sectionId: string, plan: {
     const target = empty ?? hit.firstInSection
     return scrollToParagraph(editor, target.node.attrs.id as string)
   }
-  if (
-    hit.lastAny &&
-    !hit.lastAny.node.textContent.trim() &&
-    !hit.lastAny.node.attrs.sectionId &&
-    !hit.lastPrior &&
-    !hit.firstLater
-  ) {
+  const current = paragraphAt(editor.state.doc, editor.state.selection.from)
+  if (current && !current.node.textContent.trim()) {
+    reassignParagraph(editor, current.node.attrs.id as string, sectionId)
+    return scrollToParagraph(editor, current.node.attrs.id as string)
+  }
+  if (hit.lastAny && !hit.lastAny.node.textContent.trim()) {
     reassignParagraph(editor, hit.lastAny.node.attrs.id as string, sectionId)
     return scrollToParagraph(editor, hit.lastAny.node.attrs.id as string)
   }

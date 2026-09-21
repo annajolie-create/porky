@@ -28,10 +28,8 @@ export function SourcesWindow() {
   return (
     <div className="px-3 py-3">
       <div className="flex items-center justify-between px-1 mb-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted">Sources</span>
-        <button type="button" onClick={() => setTab('sources')} className="text-[11.5px] text-muted hover:text-accent">
-          Manage
-        </button>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted">Sources</span>
+        <span className="text-[11px] text-muted tabular-nums">{sources.length}</span>
       </div>
       {sources.length ? (
         <ul className="space-y-0.5">
@@ -43,7 +41,7 @@ export function SourcesWindow() {
                   <button
                     type="button"
                     onClick={() => setOpenId(open ? null : source.id)}
-                    className="flex-1 min-w-0 text-left rounded-md px-2 py-1.5 hover:bg-paper flex items-center gap-1.5"
+                    className="flex-1 min-w-0 text-left rounded-lg px-2 py-1.5 hover:bg-surface flex items-center gap-1.5"
                     aria-expanded={open}
                   >
                     <CaretRight size={11} className={cx('text-muted shrink-0 transition-transform', open && 'rotate-90')} />
@@ -80,13 +78,12 @@ export function SourcesWindow() {
           })}
         </ul>
       ) : (
-        <p className="px-2 text-[12.5px] text-muted">
-          No sources.{' '}
-          <button type="button" onClick={() => setTab('sources')} className="text-accent hover:underline">
-            Add some
+        <div className="rounded-xl border border-dashed border-line-strong px-3 py-5 text-center">
+          <p className="text-[12.5px] text-muted">No sources yet.</p>
+          <button type="button" onClick={() => setTab('sources')} className="mt-2 text-[12.5px] font-medium text-accent hover:underline">
+            Open Sources
           </button>
-          .
-        </p>
+        </div>
       )}
     </div>
   )

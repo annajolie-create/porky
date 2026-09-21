@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { ShieldCheck } from '@phosphor-icons/react/dist/csr/ShieldCheck'
-import { TabPage } from '../AppShell'
+import { Sparkle } from '@phosphor-icons/react/dist/csr/Sparkle'
 import { Button, EmptyState, ErrorNote, Pill, SectionHeading } from '../ui'
 import { selectContextDrifted, useProject } from '@/lib/store'
 import { newId } from '@/lib/ids'
@@ -11,7 +11,7 @@ import type { PlanFlag, PlanNode } from '@/lib/model'
 import { relevantPassages } from '@/lib/passages'
 import { postJSON } from '@/lib/sse'
 import { PlanCard } from './PlanCard'
-import { PlanChat, REDO_PLAN_PROMPT } from './PlanChat'
+import { KICKOFF, PlanChat, REDO_PLAN_PROMPT } from './PlanChat'
 
 type CheckResult = {
   answersTask: { probability: number }
@@ -25,7 +25,6 @@ export function PlanTab() {
   const context = useProject((s) => s.context)
   const addNode = useProject((s) => s.addNode)
   const setNodeFlags = useProject((s) => s.setNodeFlags)
-  const setTab = useProject((s) => s.setTab)
   const drifted = useProject(selectContextDrifted)
   const requestPlanRevision = useProject((s) => s.requestPlanRevision)
   const acknowledgeContextDrift = useProject((s) => s.acknowledgeContextDrift)
@@ -102,41 +101,44 @@ export function PlanTab() {
   const flagCount = plan.reduce((sum, n) => sum + n.flags.length, 0)
 
   return (
-    <TabPage wide>
-      <SectionHeading
-        title="Plan"
-        description="The structured argument of your essay. Each section has a claim, key points and evidence linked to your sources. The editor, the agent and the checkers all refer to it."
-        actions={
-          plan.length ? (
+    <div className="h-full min-h-0 flex flex-col">
+      <div className="shrink-0 px-8 pt-8">
+        <SectionHeading
+          title="Plan"
+          description="The structured argument behind your essay. The AI and the checkers all work from this."
+          actions={
             <>
-              <Button onClick={checkPlan} loading={checking}>
-                <ShieldCheck size={15} weight="bold" />
-                Check plan
-              </Button>
-              <Button variant="primary" onClick={() => setTab('write')}>
-                Start writing
+              {plan.length ? (
+                <Button onClick={checkPlan} loading={checking}>
+                  <ShieldCheck size={15} weight="bold" />
+                  Check plan
+                </Button>
+              ) : null}
+              <Button variant="primary" onClick={() => requestPlanRevision(KICKOFF)} disabled={!context.task.trim()}>
+                <Sparkle size={15} weight="fill" />
+                Create plan with AI
               </Button>
             </>
-          ) : null
-        }
-      />
+          }
+        />
 
-      {drifted ? (
-        <div className="mb-6 flex items-start justify-between gap-4 rounded-md border border-warn/40 bg-warn-bg px-4 py-3">
-          <p className="text-[13.5px] text-ink leading-relaxed">Wait, context has changed. Should we redo the plan?</p>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button variant="primary" onClick={() => requestPlanRevision(REDO_PLAN_PROMPT)}>
-              Redo plan
-            </Button>
-            <Button variant="ghost" onClick={() => acknowledgeContextDrift()}>
-              Keep this plan
-            </Button>
+        {drifted ? (
+          <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-warn/40 bg-warn-bg px-4 py-3.5">
+            <p className="text-[13.5px] text-ink leading-relaxed">Wait, context has changed. Should we redo the plan?</p>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="primary" onClick={() => requestPlanRevision(REDO_PLAN_PROMPT)}>
+                Redo plan
+              </Button>
+              <Button variant="ghost" onClick={() => acknowledgeContextDrift()}>
+                Keep this plan
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-8 items-start">
-        <div className="min-w-0">
+      <div className="flex-1 min-h-0 grid grid-cols-[minmax(0,1fr)_minmax(440px,46%)] gap-6 px-8 pb-28">
+        <div className="min-w-0 min-h-0 overflow-y-auto pr-1">
           {plan.length ? (
             <>
               <div className="flex flex-wrap items-center gap-2 mb-4 text-[12.5px] text-muted">
@@ -182,11 +184,11 @@ export function PlanTab() {
           )}
         </div>
 
-        <div className="sticky top-0">
+        <div className="min-h-0 min-w-0">
           <PlanChat />
         </div>
       </div>
-    </TabPage>
+    </div>
   )
 }
 

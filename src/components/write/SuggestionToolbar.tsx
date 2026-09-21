@@ -53,7 +53,7 @@ export function SuggestionToolbar({ editor }: { editor: Editor; container: RefOb
 
   return (
     <div
-      className="no-print fixed z-20 fade-in inline-flex items-center gap-0.5 rounded-md border border-line bg-surface shadow-soft p-0.5"
+      className="no-print fixed z-20 fade-in inline-flex items-center gap-0.5 rounded-full border border-line bg-surface shadow-soft px-1 py-0.5"
       style={{ top: coords.top - 36, left: coords.left }}
     >
       <button

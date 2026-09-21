@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react'
 import { WarningCircle } from '@phosphor-icons/react/dist/csr/WarningCircle'
-import { PencilSimple } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { useProject } from '@/lib/store'
 import { paragraphsOf } from '@/lib/doc'
@@ -10,7 +9,7 @@ import { addParagraphInSection, startWritingInSection } from '@/editor/commands'
 import { useEssayEditorContext } from './EditorContext'
 import { cx } from '../ui'
 
-/** Section titles only; the current one highlighted; click to jump. */
+/** Section titles only; the current writing target highlighted; click to select. */
 export function MiniOutline() {
   const editor = useEssayEditorContext()
   const plan = useProject((s) => s.plan)
@@ -67,16 +66,8 @@ export function MiniOutline() {
   return (
     <div className="px-3 py-3">
       <div className="flex items-center justify-between px-1 mb-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted">Outline</span>
-        <button
-          type="button"
-          onClick={() => setTab('plan')}
-          className="inline-flex items-center gap-1 text-[11.5px] text-muted hover:text-accent"
-          title="Edit the plan"
-        >
-          <PencilSimple size={12} />
-          Edit plan
-        </button>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted">Plan outline</span>
+        <span className="text-[11px] text-muted tabular-nums">{plan.length}</span>
       </div>
 
       {plan.length ? (
@@ -90,15 +81,15 @@ export function MiniOutline() {
                 <button
                   type="button"
                   onClick={() => editor && startWritingInSection(editor, node.id, plan)}
-                  title={flags?.join('\n') || (words ? 'Jump to this section' : 'Start writing this section')}
+                  title={flags?.join('\n') || (words ? 'Jump to this section' : 'Write towards this section')}
                   className={cx(
-                    'flex-1 min-w-0 text-left rounded-md px-2 py-1.5 flex items-start gap-2 transition-colors',
-                    active ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper',
+                    'flex-1 min-w-0 text-left rounded-lg px-2 py-1.5 flex items-start gap-2 transition-colors border-l-2',
+                    active ? 'bg-surface text-ink shadow-soft border-gold' : 'text-ink-soft hover:bg-surface/70 border-transparent',
                   )}
                 >
-                  <span className={cx('mt-[3px] text-[10.5px] tabular-nums w-3 shrink-0', active ? 'text-accent' : 'text-muted')}>{i + 1}</span>
+                  <span className={cx('mt-[4px] text-[12px] font-semibold tabular-nums w-4 shrink-0', active ? 'text-gold-ink' : 'text-muted')}>{i + 1}</span>
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[12.5px] leading-snug truncate">{node.title}</span>
+                    <span className="block text-[13.5px] font-semibold leading-snug">{node.title}</span>
                     <span className="block text-[11px] text-muted tabular-nums mt-0.5">
                       {words ? words.toLocaleString() : 'Start writing'}
                       {node.targetWords ? ` / ${node.targetWords}` : words ? ' words' : ''}
@@ -122,13 +113,12 @@ export function MiniOutline() {
           })}
         </ol>
       ) : (
-        <p className="px-2 text-[12.5px] text-muted leading-relaxed">
-          No plan yet.{' '}
-          <button type="button" onClick={() => setTab('plan')} className="text-accent hover:underline">
-            Build one
-          </button>{' '}
-          so the agent and the checkers know your argument.
-        </p>
+        <div className="rounded-xl border border-dashed border-line-strong px-3 py-5 text-center">
+          <p className="text-[12.5px] text-muted leading-relaxed">No plan yet.</p>
+          <button type="button" onClick={() => setTab('plan')} className="mt-2 text-[12.5px] font-medium text-accent hover:underline">
+            Open Plan
+          </button>
+        </div>
       )}
     </div>
   )

@@ -269,10 +269,15 @@ export function AgentPanel() {
         e.preventDefault()
       }}
     >
-      <header className="shrink-0 h-10 px-3 border-b border-line flex items-center gap-2">
-        <Sparkle size={15} weight="fill" className="text-accent" />
-        <span className="text-[13px] font-semibold">Agent</span>
-        {busy && status ? <span className="ml-auto truncate text-[11.5px] text-muted">{status}</span> : null}
+      <header className="shrink-0 px-4 py-3.5 border-b border-line flex items-center gap-2.5">
+        <span className="size-7 rounded-lg bg-gold-soft text-gold grid place-items-center">
+          <Sparkle size={14} weight="fill" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[13.5px] font-semibold leading-none">AI agent</p>
+          <p className="text-[12px] text-muted mt-1 truncate">Knows your plan, sources & draft</p>
+        </div>
+        {busy && status ? <span className="ml-auto truncate text-[11.5px] text-muted max-w-[40%]">{status}</span> : null}
       </header>
 
       <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
@@ -295,7 +300,7 @@ export function AgentPanel() {
                       void send(s.prompt)
                     }
                   }}
-                  className="rounded-full border border-line px-2.5 py-1 text-[12px] hover:border-accent hover:text-accent"
+                  className="rounded-full border border-line bg-paper px-2.5 py-1 text-[12px] hover:border-gold hover:bg-accent-soft hover:text-gold-ink"
                 >
                   {s.label}
                 </button>
@@ -305,8 +310,8 @@ export function AgentPanel() {
         ) : null}
 
         {messages.map((m) => (
-          <div key={m.id} className={cx('text-[13px] leading-relaxed whitespace-pre-wrap fade-in', m.role === 'user' ? 'ml-6' : '')}>
-            <div className={cx('rounded-lg px-3 py-2', m.role === 'user' ? 'bg-accent-soft' : 'bg-paper')}>{m.content || (busy ? '' : '')}</div>
+          <div key={m.id} className={cx('text-[13px] leading-relaxed whitespace-pre-wrap fade-in flex', m.role === 'user' ? 'justify-end' : '')}>
+            <div className={cx('rounded-2xl px-3.5 py-2.5 max-w-[95%]', m.role === 'user' ? 'bg-gold-soft' : 'bg-paper')}>{m.content || (busy ? '' : '')}</div>
           </div>
         ))}
 
@@ -353,7 +358,7 @@ export function AgentPanel() {
 
       <div className="shrink-0 p-3 border-t border-line">
         {heldSelection?.text ? (
-          <div className="mb-2 flex items-start gap-2 rounded-md bg-accent-soft px-2.5 py-1.5 text-[12px] text-ink-soft">
+          <div className="mb-2 flex items-start gap-2 rounded-xl bg-accent-soft px-2.5 py-1.5 text-[12px] text-ink-soft">
             <span className="flex-1 min-w-0 line-clamp-2">Using marked text: “{heldSelection.text}”</span>
             <button
               type="button"
@@ -365,7 +370,7 @@ export function AgentPanel() {
             </button>
           </div>
         ) : null}
-        <div className="flex items-end gap-2 rounded-md border border-line px-3 py-2 focus-within:border-accent">
+        <div className="flex items-end gap-2 rounded-xl bg-paper px-3 py-2 focus-within:ring-2 focus-within:ring-gold/20">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -376,12 +381,12 @@ export function AgentPanel() {
               }
             }}
             rows={Math.min(4, Math.max(1, draft.split('\n').length))}
-            placeholder={heldSelection?.text ? 'Ask about the marked text…' : 'Ask the agent…'}
+            placeholder={heldSelection?.text ? 'Ask about the marked text…' : 'Ask the agent, or describe an edit…'}
             className="flex-1 resize-none bg-transparent text-[13px] outline-none placeholder:text-muted/70"
             disabled={busy}
           />
           {busy ? (
-            <button type="button" onClick={stop} aria-label="Stop" className="size-7 rounded-full bg-ink text-white grid place-items-center">
+            <button type="button" onClick={stop} aria-label="Stop" className="size-8 rounded-lg bg-ink text-white grid place-items-center">
               <Stop size={12} weight="fill" />
             </button>
           ) : (
@@ -390,7 +395,7 @@ export function AgentPanel() {
               onClick={submit}
               disabled={!draft.trim()}
               aria-label="Send"
-              className="size-7 rounded-full bg-accent text-white grid place-items-center disabled:opacity-40"
+              className="size-8 rounded-lg bg-gold text-ink grid place-items-center disabled:opacity-40"
             >
               <ArrowUp size={14} weight="bold" />
             </button>

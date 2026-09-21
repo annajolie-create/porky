@@ -28,64 +28,70 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
   const setEvidence = (evidence: Evidence[]) => updateNode(node.id, { evidence })
 
   return (
-    <Card className={cx('overflow-hidden', node.flags.length > 0 && 'border-warn/40')}>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <span className="size-6 shrink-0 rounded-full bg-accent-soft text-accent grid place-items-center text-[11.5px] font-semibold tabular-nums">
+    <Card className={cx('overflow-hidden', node.flags.length > 0 && 'border-gold/55 ring-1 ring-gold/20')}>
+      <div className="flex items-center gap-3 px-5 py-4">
+        <span className="size-7 shrink-0 rounded-full bg-gold text-ink grid place-items-center text-[13px] font-semibold tabular-nums">
           {index + 1}
         </span>
         <input
           value={node.title}
           onChange={(e) => updateNode(node.id, { title: e.target.value })}
           aria-label="Section title"
-          className="flex-1 min-w-0 bg-transparent text-[15px] font-semibold outline-none rounded px-1 -mx-1 focus:bg-paper"
+          className="flex-1 min-w-0 bg-transparent font-serif text-[20px] font-semibold tracking-[-0.02em] leading-snug outline-none rounded px-1 -mx-1 focus:bg-paper"
           placeholder="Section title"
         />
-        {node.flags.length ? (
-          <span className="inline-flex items-center gap-1 text-warn text-[12px]">
-            <WarningCircle size={15} weight="fill" />
-            {node.flags.length}
-          </span>
-        ) : null}
-        <input
-          type="number"
-          value={node.targetWords ?? ''}
-          onChange={(e) => updateNode(node.id, { targetWords: e.target.value ? Number(e.target.value) : null })}
-          aria-label="Target words"
-          placeholder="words"
-          className="w-[72px] bg-transparent text-right text-[12.5px] text-muted tabular-nums outline-none rounded px-1 focus:bg-paper"
-        />
-        <div className="flex items-center text-muted">
-          <IconButton label="Move up" disabled={index === 0} onClick={() => moveNode(node.id, -1)}>
-            <ArrowUp size={14} />
-          </IconButton>
-          <IconButton label="Move down" disabled={index === total - 1} onClick={() => moveNode(node.id, 1)}>
-            <ArrowDown size={14} />
-          </IconButton>
-          <IconButton
-            label="Add section below"
-            onClick={() =>
-              addNode(
-                {
-                  id: newId('sec'),
-                  title: 'New section',
-                  claim: '',
-                  keyPoints: [],
-                  evidence: [],
-                  targetWords: null,
-                  flags: [],
-                },
-                index + 1,
-              )
-            }
-          >
-            <Plus size={14} />
-          </IconButton>
-          <IconButton label="Delete section" onClick={() => removeNode(node.id)} danger>
-            <Trash size={14} />
-          </IconButton>
-          <IconButton label={open ? 'Collapse' : 'Expand'} onClick={() => setOpen((v) => !v)}>
-            <CaretDown size={14} className={cx('transition-transform', !open && '-rotate-90')} />
-          </IconButton>
+        <div className="flex items-center gap-2 shrink-0">
+          {node.flags.length ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-gold-ink text-[11.5px] font-medium">
+              <WarningCircle size={13} weight="fill" />
+              {node.flags.length} issue{node.flags.length === 1 ? '' : 's'}
+            </span>
+          ) : null}
+          <div className="inline-flex items-center rounded-full bg-paper h-6 px-2.5">
+            {node.targetWords ? <span className="text-[11.5px] text-muted mr-0.5">~</span> : null}
+            <input
+              type="number"
+              value={node.targetWords ?? ''}
+              onChange={(e) => updateNode(node.id, { targetWords: e.target.value ? Number(e.target.value) : null })}
+              aria-label="Target words"
+              placeholder="words"
+              className="w-[52px] bg-transparent text-[12px] text-muted tabular-nums outline-none"
+            />
+            {node.targetWords ? <span className="text-[11.5px] text-muted">words</span> : null}
+          </div>
+          <div className="flex items-center text-muted">
+            <IconButton label="Move up" disabled={index === 0} onClick={() => moveNode(node.id, -1)}>
+              <ArrowUp size={14} />
+            </IconButton>
+            <IconButton label="Move down" disabled={index === total - 1} onClick={() => moveNode(node.id, 1)}>
+              <ArrowDown size={14} />
+            </IconButton>
+            <IconButton
+              label="Add section below"
+              onClick={() =>
+                addNode(
+                  {
+                    id: newId('sec'),
+                    title: 'New section',
+                    claim: '',
+                    keyPoints: [],
+                    evidence: [],
+                    targetWords: null,
+                    flags: [],
+                  },
+                  index + 1,
+                )
+              }
+            >
+              <Plus size={14} />
+            </IconButton>
+            <IconButton label="Delete section" onClick={() => removeNode(node.id)} danger>
+              <Trash size={14} />
+            </IconButton>
+            <IconButton label={open ? 'Collapse' : 'Expand'} onClick={() => setOpen((v) => !v)}>
+              <CaretDown size={14} className={cx('transition-transform', !open && '-rotate-90')} />
+            </IconButton>
+          </div>
         </div>
       </div>
 
@@ -99,13 +105,10 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
             />
           </Block>
 
-          <Block label="Key points" hint="One per line">
-            <AutoTextarea
-              value={node.keyPoints.join('\n')}
-              onChange={(v) => updateNode(node.id, { keyPoints: v.split('\n') })}
-              onBlur={() => updateNode(node.id, { keyPoints: node.keyPoints.map((k) => k.trim()).filter(Boolean) })}
-              placeholder="Points to make in this section"
-              mono
+          <Block label="Key points">
+            <KeyPointList
+              points={node.keyPoints}
+              onChange={(keyPoints) => updateNode(node.id, { keyPoints })}
             />
           </Block>
 
@@ -185,11 +188,63 @@ export function PlanCard({ node, index, total }: { node: PlanNode; index: number
 function Block({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-baseline gap-2 mb-1">
+      <div className="flex items-baseline gap-2 mb-1.5">
         <span className="text-[11.5px] font-medium uppercase tracking-wide text-muted">{label}</span>
         {hint ? <span className="text-[11.5px] text-muted/80">{hint}</span> : null}
       </div>
       {children}
+    </div>
+  )
+}
+
+function KeyPointList({ points, onChange }: { points: string[]; onChange: (next: string[]) => void }) {
+  const rows = points.length ? points : ['']
+
+  const setRow = (index: number, value: string) => {
+    const next = points.length ? [...points] : ['']
+    next[index] = value
+    onChange(next)
+  }
+
+  const removeRow = (index: number) => {
+    const next = rows.filter((_, i) => i !== index)
+    onChange(next.map((p) => p.trim()).filter((p, i, all) => p.length > 0 || all.length === 1))
+  }
+
+  return (
+    <div>
+      <ol className="space-y-2">
+        {rows.map((point, i) => (
+          <li key={i} className="flex items-start gap-2.5">
+            <span className="mt-1.5 size-5 shrink-0 rounded-full bg-paper text-gold-ink grid place-items-center text-[11px] font-semibold tabular-nums">
+              {i + 1}
+            </span>
+            <AutoTextarea
+              value={point}
+              onChange={(v) => setRow(i, v)}
+              onBlur={() => onChange(rows.map((p) => p.trim()).filter((p, idx, all) => p.length > 0 || all.length === 1))}
+              placeholder={`Key point ${i + 1}`}
+              className="flex-1 min-h-[32px] text-[14px] leading-snug py-1"
+            />
+            <button
+              type="button"
+              aria-label={`Remove key point ${i + 1}`}
+              className="mt-1 p-1 text-muted hover:text-ink rounded"
+              onClick={() => removeRow(i)}
+              disabled={rows.length === 1 && !point.trim()}
+            >
+              <X size={13} />
+            </button>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        className="mt-2 ml-7 text-[12.5px] text-accent hover:underline"
+        onClick={() => onChange([...rows, ''])}
+      >
+        + Add key point
+      </button>
     </div>
   )
 }

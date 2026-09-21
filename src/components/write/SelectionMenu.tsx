@@ -113,17 +113,17 @@ export function SelectionMenu({ editor }: { editor: Editor; container: RefObject
       className="no-print fixed z-30 -translate-x-1/2 -translate-y-full fade-in"
       style={{ top: coords.top, left: coords.left }}
     >
-      <div className="inline-flex items-center rounded-md border border-line bg-surface shadow-soft">
+      <div className="inline-flex items-center rounded-full bg-ink text-white shadow-soft overflow-hidden">
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setOpen((v) => !v)}
           className={cx(
-            'h-8 px-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium rounded-l-md hover:bg-paper',
-            open && 'bg-accent-soft text-accent',
+            'h-8 px-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium hover:bg-white/10',
+            open && 'bg-white/10',
           )}
         >
-          <Sparkle size={13} weight="fill" />
+          <Sparkle size={13} weight="fill" className="text-gold" />
           Ask AI
         </button>
         <button
@@ -131,13 +131,13 @@ export function SelectionMenu({ editor }: { editor: Editor; container: RefObject
           onMouseDown={(e) => e.preventDefault()}
           onClick={comment}
           aria-label="Add comment"
-          className="size-8 grid place-items-center rounded-r-md text-muted hover:bg-paper hover:text-ink border-l border-line"
+          className="size-8 grid place-items-center text-white/70 hover:text-white hover:bg-white/10 border-l border-white/15"
         >
           <ChatTeardropText size={14} />
         </button>
       </div>
       {open ? (
-        <div className="mt-1 w-[200px] rounded-md border border-line bg-surface shadow-soft p-1 fade-in">
+        <div className="mt-1 w-[200px] rounded-xl border border-line bg-surface shadow-soft p-1 fade-in">
           {ACTIONS.map((a) => (
             <button
               key={a.id}

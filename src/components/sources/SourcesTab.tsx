@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { FilePdf } from '@phosphor-icons/react/dist/csr/FilePdf'
 import { LinkSimple } from '@phosphor-icons/react/dist/csr/LinkSimple'
-import { UploadSimple } from '@phosphor-icons/react/dist/csr/UploadSimple'
+import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { TabPage } from '../AppShell'
 import { Button, Dots, EmptyState, ErrorNote, Input, SectionHeading, cx } from '../ui'
 import { useProject } from '@/lib/store'
@@ -15,11 +15,11 @@ import { TopicSearch } from './TopicSearch'
 export function SourcesTab() {
   const sources = useProject((s) => s.sources)
   const addSource = useProject((s) => s.addSource)
-  const setTab = useProject((s) => s.setTab)
   const [pending, setPending] = useState<string[]>([])
   const [errors, setErrors] = useState<{ id: string; message: string; retry: () => void }[]>([])
   const [url, setUrl] = useState('')
   const [dragging, setDragging] = useState(false)
+  const [adding, setAdding] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const track = async (label: string, run: () => Promise<void>, retry: () => void) => {
@@ -41,6 +41,7 @@ export function SourcesTab() {
       const go = () => void track(file.name, async () => addSource(await sourceFromFile(file)), go)
       go()
     }
+    setAdding(false)
   }
 
   const addUrl = () => {
@@ -49,6 +50,7 @@ export function SourcesTab() {
     setUrl('')
     const go = () => void track(value, async () => addSource(await sourceFromUrl(value)), go)
     go()
+    setAdding(false)
   }
 
   const onDrop = (event: DragEvent) => {
@@ -59,73 +61,83 @@ export function SourcesTab() {
     const text = event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain')
     if (!files.length && text && /^https?:\/\//i.test(text.trim())) {
       setUrl(text.trim())
+      setAdding(true)
     }
   }
 
+  const showAdd = adding || !sources.length
+
   return (
-    <TabPage>
+    <TabPage wide>
       <SectionHeading
         title="Sources"
-        description="Upload the papers, reports and articles you want to cite. The AI reads them when it plans, drafts and checks. Author, year and title feed the APA citations, so correct them if the extraction got them wrong."
+        description="Everything the AI can read, summarise and search."
+        actions={
+          <Button variant="primary" onClick={() => setAdding((v) => !v)}>
+            <Plus size={15} weight="bold" />
+            Add source
+          </Button>
+        }
       />
 
-      <div
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragging(true)
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        className={cx(
-          'rounded-lg border border-dashed px-6 py-7 text-center transition-colors',
-          dragging ? 'border-accent bg-accent-soft/40' : 'border-line-strong bg-surface/50',
-        )}
-      >
-        <input
-          ref={fileInput}
-          type="file"
-          multiple
-          accept="application/pdf,.pdf,.txt,.md"
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files?.length) addFiles(Array.from(e.target.files))
-            e.target.value = ''
+      {sources.length ? <TopicSearch /> : null}
+
+      {showAdd ? (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault()
+            setDragging(true)
           }}
-        />
-        <div className="mx-auto size-9 rounded-full bg-accent-soft text-accent grid place-items-center mb-3">
-          <UploadSimple size={18} weight="bold" />
-        </div>
-        <p className="text-[14px] font-medium">Drop PDFs here</p>
-        <p className="text-[12.5px] text-muted mt-0.5">Papers, short reports, slide decks. A handful of short PDFs works best.</p>
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Button onClick={() => fileInput.current?.click()}>
-            <FilePdf size={15} weight="bold" />
-            Choose PDF
-          </Button>
-        </div>
-        <div className="mt-5 flex items-center gap-2 max-w-[520px] mx-auto">
-          <div className="relative flex-1">
-            <LinkSimple size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <Input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') addUrl()
-              }}
-              placeholder="Paste a link to an article"
-              className="pl-9"
-            />
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          className={cx(
+            'rounded-2xl border border-dashed px-6 py-8 text-center transition-colors mt-6',
+            dragging ? 'border-gold bg-accent-soft/40' : 'border-line-strong bg-surface/50',
+          )}
+        >
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            accept="application/pdf,.pdf,.txt,.md"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) addFiles(Array.from(e.target.files))
+              e.target.value = ''
+            }}
+          />
+          <p className="text-[14px] font-medium">Drop PDFs here, or add a link</p>
+          <p className="text-[12.5px] text-muted mt-0.5">Papers, reports, or articles you want to cite.</p>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <Button onClick={() => fileInput.current?.click()}>
+              <FilePdf size={15} weight="bold" />
+              Choose PDF
+            </Button>
           </div>
-          <Button onClick={addUrl} disabled={!url.trim()}>
-            Add link
-          </Button>
+          <div className="mt-4 flex items-center gap-2 max-w-[520px] mx-auto">
+            <div className="relative flex-1">
+              <LinkSimple size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addUrl()
+                }}
+                placeholder="Paste a link to an article"
+                className="pl-9 h-11"
+              />
+            </div>
+            <Button onClick={addUrl} disabled={!url.trim()}>
+              Add link
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {pending.length ? (
         <div className="mt-4 space-y-1.5">
           {pending.map((label, i) => (
-            <div key={`${label}-${i}`} className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 fade-in">
+            <div key={`${label}-${i}`} className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 fade-in">
               <Dots label={`Reading ${label}`} />
             </div>
           ))}
@@ -147,30 +159,18 @@ export function SourcesTab() {
         </div>
       ) : null}
 
-      <div className="mt-8">
+      <div className={cx(sources.length ? 'mt-6' : 'mt-8')}>
         {sources.length ? (
-          <>
-            <TopicSearch />
-            <ul className="space-y-3 mt-6">
-              {sources.map((source) => (
-                <li key={source.id}>
-                  <SourceCard source={source} />
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : !pending.length ? (
+          <ul className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {sources.map((source) => (
+              <li key={source.id}>
+                <SourceCard source={source} />
+              </li>
+            ))}
+          </ul>
+        ) : !pending.length && !showAdd ? (
           <EmptyState title="No sources yet" body="Add at least one source before building the plan. The AI will only cite what is here." />
-        ) : null}
-      </div>
-
-      <div className="flex items-center justify-between pt-6 mt-8 border-t border-line">
-        <Button variant="ghost" onClick={() => setTab('context')}>
-          Back
-        </Button>
-        <Button variant="primary" onClick={() => setTab('plan')}>
-          Next: Plan
-        </Button>
+        ) : !sources.length && !pending.length ? null : null}
       </div>
     </TabPage>
   )

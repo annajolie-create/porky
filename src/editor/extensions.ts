@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Citation } from './citation'
 import { ParagraphDecorations } from './decorations'
 import { ParagraphIds } from './paragraphIds'
+import { Spellcheck } from './spellcheck'
 import { SuggestionDelete, SuggestionInsert, SuggestionLock } from './suggestions'
 
 export type EditorOptions = {
@@ -41,5 +42,6 @@ export function buildExtensions(options: EditorOptions) {
     SuggestionDelete,
     SuggestionLock.configure({ lockedParagraphIds: options.lockedParagraphIds }),
     ParagraphDecorations,
+    Spellcheck,
   ]
 }

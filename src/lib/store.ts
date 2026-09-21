@@ -149,7 +149,7 @@ export const useProject = create<ProjectState>()(
   persist(
     (setState, getState) => ({
       ...defaultProject(),
-      tab: 'context',
+      tab: 'write',
       hydrated: false,
       activeParagraphId: null,
       planVersion: 0,
@@ -301,7 +301,7 @@ export const useProject = create<ProjectState>()(
         setState({ agentRequest: { id: Math.random().toString(36).slice(2), ...request }, tab: 'write' }),
       clearAgentRequest: () => setState({ agentRequest: null }),
       resetProject: () =>
-        setState({ ...defaultProject(), tab: 'context', planVersion: 0, heldSelection: null, planRequest: null }),
+        setState({ ...defaultProject(), tab: 'write', planVersion: 0, heldSelection: null, planRequest: null }),
     }),
     {
       name: 'porky-essay-v1',
@@ -309,18 +309,22 @@ export const useProject = create<ProjectState>()(
       skipHydration: true,
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<ProjectState>
+        const { tab: _savedTab, ...savedRest } = saved
+        void _savedTab
         return {
           ...current,
-          ...saved,
+          ...savedRest,
+          tab: 'write',
           context: { ...current.context, ...(saved.context ?? {}) },
           plan: saved.plan ?? current.plan,
           sources: saved.sources ?? current.sources,
         }
       },
       partialize: (state) => {
-        // Transient UI state is not persisted.
+        // Transient UI state is not persisted. The document always opens on Write.
         const {
           hydrated,
+          tab,
           activeParagraphId,
           agentRequest,
           planVersion,
@@ -333,6 +337,7 @@ export const useProject = create<ProjectState>()(
           ...rest
         } = state
         void hydrated
+        void tab
         void activeParagraphId
         void agentRequest
         void planVersion
@@ -345,6 +350,7 @@ export const useProject = create<ProjectState>()(
         return rest as Omit<
           ProjectState,
           | 'hydrated'
+          | 'tab'
           | 'activeParagraphId'
           | 'agentRequest'
           | 'planVersion'
@@ -357,7 +363,7 @@ export const useProject = create<ProjectState>()(
         >
       },
       onRehydrateStorage: () => (_state, error) => {
-        if (error) console.warn('Porky could not restore the last session.', error)
+        if (error) console.warn('essay could not restore the last session.', error)
         finishHydration()
       },
     },

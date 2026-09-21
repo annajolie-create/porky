@@ -1,35 +1,33 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import type { DragEvent } from 'react'
 import { FilePlus } from '@phosphor-icons/react/dist/csr/FilePlus'
+import { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 import { X } from '@phosphor-icons/react/dist/csr/X'
 import { TabPage } from '../AppShell'
-import { Button, ErrorNote, Field, Input, Select, SectionHeading, Textarea } from '../ui'
+import { Button, ErrorNote, Field, Input, Select, SectionHeading, Textarea, cx } from '../ui'
 import { selectContextDrifted, useProject } from '@/lib/store'
 import { LANGUAGES, STYLES } from '@/lib/model'
 import type { EssayStyle } from '@/lib/model'
 import { newId } from '@/lib/ids'
-import { countWords } from '@/lib/text'
 
 export function ContextTab() {
   const context = useProject((s) => s.context)
-  const title = useProject((s) => s.title)
-  const setTitle = useProject((s) => s.setTitle)
   const update = useProject((s) => s.updateContext)
   const setTab = useProject((s) => s.setTab)
   const drifted = useProject(selectContextDrifted)
-  const planLength = useProject((s) => s.plan.length)
 
   return (
     <TabPage>
       <SectionHeading
         title="Context"
-        description="What you have to deliver. Every AI feature in the app reads this, so the more precise it is, the better the plan, the drafts and the checks."
+        description="Everything the AI reads about your assignment. Saved automatically as you type."
       />
 
       {drifted ? (
-        <div className="mb-6 flex items-start justify-between gap-4 rounded-md border border-warn/40 bg-warn-bg px-4 py-3">
-          <p className="text-[13px] text-ink-soft leading-relaxed">
+        <div className="mb-7 flex items-start justify-between gap-4 rounded-2xl border border-warn/35 bg-warn-bg px-4 py-3.5">
+          <p className="text-[13.5px] text-ink-soft leading-relaxed">
             You changed the assignment after the plan was built. Update the plan so the editor and the agent stay in sync.
           </p>
           <Button variant="primary" className="shrink-0" onClick={() => setTab('plan')}>
@@ -38,25 +36,21 @@ export function ContextTab() {
         </div>
       ) : null}
 
-      <div className="space-y-6">
-        <Field label="Essay title" hint="Working title. You can change it any time from the Write tab.">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. The case for a European digital euro" />
-        </Field>
-
-        <Field label="Task or question" hint="The exact wording from your course, if you have it.">
+      <div className="space-y-7">
+        <Field label="Task or question">
           <Textarea
             value={context.task}
             onChange={(e) => update({ task: e.target.value })}
-            placeholder='e.g. "Assess the case for a European digital euro."'
+            placeholder="The exact wording from your course, if you have it."
             rows={3}
           />
         </Field>
 
-        <Field label="Framework or instructions" hint="Course guidelines, required theories, structure requirements.">
+        <Field label="Framework & instructions" optional>
           <Textarea
             value={context.framework}
             onChange={(e) => update({ framework: e.target.value })}
-            placeholder="Optional"
+            placeholder="Course guidelines, required theories, structure requirements."
             rows={3}
           />
         </Field>
@@ -64,14 +58,20 @@ export function ContextTab() {
         <GradingField />
 
         <div className="grid grid-cols-3 gap-4">
-          <Field label="Length (words)">
-            <Input
-              type="number"
-              min={100}
-              step={100}
-              value={context.lengthWords ?? ''}
-              onChange={(e) => update({ lengthWords: e.target.value ? Number(e.target.value) : null })}
-            />
+          <Field label="Length">
+            <div className="relative">
+              <Input
+                type="number"
+                min={100}
+                step={100}
+                value={context.lengthWords ?? ''}
+                onChange={(e) => update({ lengthWords: e.target.value ? Number(e.target.value) : null })}
+                className="pr-20"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-2.5 rounded-lg bg-paper text-[12.5px] text-muted grid place-items-center">
+                words
+              </span>
+            </div>
           </Field>
           <Field label="Style">
             <Select value={context.style} onChange={(e) => update({ style: e.target.value as EssayStyle })}>
@@ -94,20 +94,6 @@ export function ContextTab() {
         </div>
 
         <ReferencePieces />
-
-        <div className="flex items-center justify-between pt-4 border-t border-line">
-          <span className="text-[12.5px] text-muted">Saved automatically.</span>
-          <div className="flex items-center gap-2">
-            {drifted ? (
-              <Button variant="primary" onClick={() => setTab('plan')}>
-                Update plan
-              </Button>
-            ) : null}
-            <Button variant={drifted ? 'secondary' : 'primary'} onClick={() => setTab(planLength ? 'plan' : 'sources')}>
-              {planLength ? 'Back to plan' : 'Next: Sources'}
-            </Button>
-          </div>
-        </div>
       </div>
     </TabPage>
   )
@@ -118,6 +104,7 @@ function GradingField() {
   const update = useProject((s) => s.updateContext)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
 
   const upload = async (file: File) => {
@@ -131,6 +118,7 @@ function GradingField() {
       const data = (await response.json()) as { text?: string; error?: string }
       if (!response.ok || !data.text) throw new Error(data.error ?? 'Could not read that file.')
       update({ grading: grading ? `${grading}\n\n${data.text}` : data.text })
+      setFileName(file.name)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -139,26 +127,55 @@ function GradingField() {
   }
 
   return (
-    <Field label="Grading scheme or tutor comments" hint="Paste the rubric, or upload it as a PDF.">
-      <Textarea value={grading} onChange={(e) => update({ grading: e.target.value })} placeholder="Optional" rows={4} />
-      <div className="mt-2 flex items-center gap-3">
-        <input
-          ref={input}
-          type="file"
-          accept="application/pdf,.pdf,.txt,.md"
-          className="hidden"
+    <Field label="Grading scheme or tutor comments" optional>
+      <div className="relative">
+        <Textarea
+          value={grading}
           onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void upload(file)
-            e.target.value = ''
+            update({ grading: e.target.value })
+            if (!e.target.value) setFileName(null)
           }}
+          placeholder="Upload the marking rubric or paste tutor comments."
+          rows={3}
+          className="pb-14"
         />
-        <Button size="sm" loading={busy} onClick={() => input.current?.click()}>
-          <FilePlus size={14} weight="bold" />
-          Upload rubric PDF
-        </Button>
-        {error ? <ErrorNote message={error} /> : null}
+        <div className="absolute left-3 bottom-3 flex items-center gap-2">
+          <input
+            ref={input}
+            type="file"
+            accept="application/pdf,.pdf,.txt,.md"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void upload(file)
+              e.target.value = ''
+            }}
+          />
+          {fileName ? (
+            <span className="inline-flex items-center gap-2 h-9 pl-2 pr-2 rounded-lg bg-paper border border-line text-[12.5px]">
+              <span className="size-5 rounded bg-gold grid place-items-center text-[10px] font-bold text-ink">PDF</span>
+              {fileName}
+              <button
+                type="button"
+                aria-label={`Remove ${fileName}`}
+                className="text-muted hover:text-ink px-0.5"
+                onClick={() => {
+                  setFileName(null)
+                  update({ grading: '' })
+                }}
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ) : (
+            <Button size="sm" loading={busy} onClick={() => input.current?.click()}>
+              <FilePlus size={14} weight="bold" />
+              Upload rubric
+            </Button>
+          )}
+        </div>
       </div>
+      {error ? <div className="mt-2"><ErrorNote message={error} /></div> : null}
     </Field>
   )
 }
@@ -170,13 +187,14 @@ function ReferencePieces() {
   const [error, setError] = useState<string | null>(null)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
+  const [dragging, setDragging] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
   const add = (name: string, text: string) => {
     update({ referencePieces: [...pieces, { id: newId('ref'), name, text }] })
   }
 
-  const upload = async (files: FileList) => {
+  const upload = async (files: FileList | File[]) => {
     setBusy(true)
     setError(null)
     try {
@@ -196,33 +214,31 @@ function ReferencePieces() {
     }
   }
 
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault()
+    setDragging(false)
+    if (event.dataTransfer.files?.length) void upload(event.dataTransfer.files)
+  }
+
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1.5">
-        <span className="text-[12.5px] font-medium text-ink-soft">Reference pieces</span>
-        <span className="text-[12px] text-muted">Used for style and structure only, never cited.</span>
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-[13px] font-semibold text-ink">Reference pieces</span>
+        <span className="text-[12px] text-muted">optional</span>
       </div>
 
-      {pieces.length ? (
-        <ul className="rounded-md border border-line bg-surface divide-y divide-line mb-2">
-          {pieces.map((piece) => (
-            <li key={piece.id} className="flex items-center gap-3 px-3 py-2 text-[13px]">
-              <span className="flex-1 truncate">{piece.name}</span>
-              <span className="text-muted tabular-nums text-[12px]">{countWords(piece.text).toLocaleString()} words</span>
-              <button
-                type="button"
-                aria-label={`Remove ${piece.name}`}
-                className="text-muted hover:text-ink rounded p-0.5"
-                onClick={() => update({ referencePieces: pieces.filter((p) => p.id !== piece.id) })}
-              >
-                <X size={14} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      <div className="flex items-center gap-2">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragging(true)
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        className={cx(
+          'rounded-2xl border border-dashed px-6 pt-10 pb-20 text-center transition-colors',
+          dragging ? 'border-gold bg-accent-soft/50' : 'border-line-strong bg-surface/40',
+        )}
+      >
         <input
           ref={input}
           type="file"
@@ -234,17 +250,47 @@ function ReferencePieces() {
             e.target.value = ''
           }}
         />
-        <Button size="sm" loading={busy} onClick={() => input.current?.click()}>
-          <FilePlus size={14} weight="bold" />
-          Upload past essay
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setPasteOpen((v) => !v)}>
-          Paste text
-        </Button>
+        <button
+          type="button"
+          onClick={() => input.current?.click()}
+          className="mx-auto size-9 rounded-xl bg-gold-soft text-gold-ink grid place-items-center mb-3 hover:bg-gold transition-colors"
+          aria-label="Upload reference pieces"
+        >
+          <Plus size={18} weight="bold" />
+        </button>
+        <p className="text-[14px] font-medium">Drop past essays or model answers, or click to upload</p>
+        <p className="text-[12.5px] text-muted mt-1">Used for style and structure only — never cited as a source</p>
+
+        {pieces.length ? (
+          <ul className="mt-5 flex flex-wrap justify-center gap-2">
+            {pieces.map((piece) => (
+              <li key={piece.id} className="inline-flex items-center gap-2 h-9 pl-2.5 pr-2 rounded-lg bg-paper border border-line text-[12.5px]">
+                <span className="size-4 rounded bg-line-strong/80" />
+                <span className="max-w-[220px] truncate">{piece.name}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${piece.name}`}
+                  className="text-muted hover:text-ink rounded p-0.5"
+                  onClick={() => update({ referencePieces: pieces.filter((p) => p.id !== piece.id) })}
+                >
+                  <X size={12} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="mt-4">
+          <button type="button" onClick={() => setPasteOpen((v) => !v)} className="text-[12.5px] text-muted hover:text-ink">
+            {pasteOpen ? 'Cancel paste' : 'Or paste text'}
+          </button>
+        </div>
       </div>
 
+      {busy ? <p className="mt-2 text-[12.5px] text-muted">Reading file…</p> : null}
+
       {pasteOpen ? (
-        <div className="mt-2 space-y-2 fade-in">
+        <div className="mt-3 space-y-2 fade-in">
           <Textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste a model answer or a past essay" rows={5} />
           <div className="flex gap-2">
             <Button

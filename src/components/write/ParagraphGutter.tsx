@@ -101,8 +101,8 @@ export function ParagraphGutter({ editor, container }: { editor: Editor; contain
                       node.id === m.sectionId && 'text-accent',
                     )}
                   >
-                    <span className="text-muted tabular-nums w-4">{i + 1}</span>
-                    <span className="truncate">{node.title}</span>
+                    <span className="tabular-nums w-5 shrink-0 text-[12px] font-semibold text-muted">{i + 1}</span>
+                    <span className="font-medium leading-snug">{node.title}</span>
                   </button>
                 ))}
                 {!plan.length ? <p className="px-2 py-1.5 text-[12.5px] text-muted">Create a plan first.</p> : null}
