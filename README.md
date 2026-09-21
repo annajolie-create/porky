@@ -6,8 +6,11 @@ real A4 page.
 
 ```bash
 npm install
+cp .env.example .env.local   # add your Anthropic API key for the assistant
 npm run dev
 ```
+
+The editor works without a key; only the assistant panel needs one.
 
 ## What it does
 
@@ -31,6 +34,10 @@ centre or right.
 **Documents** — the drawer holds as many as you like, sorted by when you last
 touched them, with rename, duplicate and delete. Everything saves as you type.
 
+**Assistant** — a Claude panel on the right that can see the document and your
+current selection. Ask it to summarise, tighten, critique or continue, then
+insert or copy the reply. Runs on Claude Haiku 4.5.
+
 **Printing** — Ctrl/Cmd + P. The print stylesheet keeps headings with the text
 that follows them, stops images splitting across pages, and preserves colour
 and highlighting. Your browser's "Save as PDF" produces selectable, searchable
@@ -46,6 +53,19 @@ Images are embedded directly in the document so it stays self-contained. They
 are scaled down to 1600px on the long edge and re-encoded as WebP on the way
 in, which keeps a phone photo from costing several megabytes; anything over
 12 MB is refused.
+
+## The API key
+
+The assistant calls Claude through a small Node handler (`server/assistant.ts`)
+mounted into the Vite dev and preview servers. The key lives in `.env.local`,
+has no `VITE_` prefix, and is therefore never inlined into the browser bundle —
+it stays on the server side of `/api/assistant`.
+
+That matters because everything else here is a static site. A key with a `VITE_`
+prefix, or one written into a source file, would ship to every visitor in plain
+text. If you deploy this as a static build, `/api/assistant` will not exist and
+the panel will report that it cannot reach the assistant; giving it a real
+backend is the fix, not moving the key into the client.
 
 ## Keyboard
 

@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { Files } from '@phosphor-icons/react/dist/csr/Files'
 import { Printer } from '@phosphor-icons/react/dist/csr/Printer'
+import { Sparkle } from '@phosphor-icons/react/dist/csr/Sparkle'
+import { AssistantPanel } from '../assistant/AssistantPanel'
 import { StatusBar } from '../components/StatusBar'
 import type { DocumentBody, DocumentMeta } from '../storage/types'
 import { Toolbar } from '../toolbar/Toolbar'
@@ -29,6 +31,7 @@ export function DocumentEditor({
 }: Props) {
   const [title, setTitle] = useState(meta.title)
   const [notice, setNotice] = useState<string | null>(null)
+  const [assistantOpen, setAssistantOpen] = useState(false)
   const editorRef = useRef<Editor | null>(null)
 
   const editor = useEditor({
@@ -93,6 +96,31 @@ export function DocumentEditor({
     return () => window.clearTimeout(timer)
   }, [notice])
 
+  // Read at send time rather than on every keystroke, so typing does not
+  // re-render the panel.
+  const getSnapshot = useCallback(() => {
+    const current = editorRef.current
+    if (!current) return { title, text: '', selection: '' }
+    const { from, to } = current.state.selection
+    return {
+      title,
+      text: current.getText(),
+      selection: from === to ? '' : current.state.doc.textBetween(from, to, '\n'),
+    }
+  }, [title])
+
+  const insertFromAssistant = useCallback((text: string) => {
+    const current = editorRef.current
+    if (!current) return
+    // Paragraph per blank-line-separated block, so pasted prose keeps its shape.
+    const blocks = text
+      .split(/\n{2,}/)
+      .map((block) => block.replace(/\n/g, ' ').trim())
+      .filter(Boolean)
+      .map((block) => ({ type: 'paragraph', content: [{ type: 'text', text: block }] }))
+    if (blocks.length) current.chain().focus().insertContent(blocks).run()
+  }, [])
+
   return (
     <>
       <header className="chrome">
@@ -132,6 +160,16 @@ export function DocumentEditor({
               <Printer size={16} weight="bold" />
               Print
             </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              aria-pressed={assistantOpen}
+              title="Writing assistant"
+              onClick={() => setAssistantOpen((open) => !open)}
+            >
+              <Sparkle size={16} weight={assistantOpen ? 'fill' : 'bold'} />
+              Assistant
+            </button>
           </div>
         </div>
 
@@ -154,6 +192,14 @@ export function DocumentEditor({
           {editor ? <EditorContent editor={editor} /> : <p className="page-loading">Opening document</p>}
         </article>
       </main>
+
+      {assistantOpen ? (
+        <AssistantPanel
+          onClose={() => setAssistantOpen(false)}
+          getSnapshot={getSnapshot}
+          onInsert={insertFromAssistant}
+        />
+      ) : null}
 
       <StatusBar editor={editor} notice={notice} />
     </>

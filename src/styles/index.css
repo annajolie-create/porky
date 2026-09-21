@@ -1,6 +1,7 @@
 @import './chrome.css';
 @import './page.css';
 @import './library.css';
+@import './assistant.css';
 @import './print.css';
 
 :root {
@@ -67,8 +68,21 @@ select {
 
 .app {
   min-height: 100dvh;
+  max-height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.app > .chrome,
+.app > .status {
+  grid-column: 1 / -1;
+}
+
+.app > .desk {
+  grid-column: 1;
+  grid-row: 2;
+  overflow-y: auto;
 }
 
 .sr-only {
